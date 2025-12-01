@@ -191,6 +191,8 @@ type TreeItemProps = TreeProps & {
     draggedItem: TreeDataItem | null
     cutItemIds: string[]
     level?: number
+    isParentSelected?: boolean
+    isParentNextSiblingSelected?: boolean
 }
 
 const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
@@ -214,6 +216,8 @@ const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
             initialSelectedItemIds,
             onDocumentDrag,
             onNodeClick,
+            isParentSelected,
+            isParentNextSiblingSelected,
             ...props
         },
         ref
@@ -224,12 +228,15 @@ const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
         return (
             <div ref={ref} role="tree" className={className} {...props}>
                 <ul>
-                    {data.map((item) => {
+                    {data.map((item, index) => {
                         const isSelected = selectedItemIds.includes(item.id)
+                        const isPrevSiblingSelected = index > 0 && selectedItemIds.includes(data[index - 1].id)
+                        const isNextSiblingSelected = (index < data.length - 1 && selectedItemIds.includes(data[index + 1].id)) || (index === data.length - 1 && !!isParentNextSiblingSelected)
                         return (
                             <li
                                 key={item.id}
                                 data-selected={isSelected}
+                                data-first={index === 0}
                                 className="peer group/li"
                             >
                                 {item.children ? (
@@ -247,6 +254,10 @@ const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
                                         renderItem={renderItem}
                                         cutItemIds={cutItemIds}
                                         onNodeClick={onNodeClick}
+                                        isFirstChild={index === 0}
+                                        isParentSelected={isParentSelected}
+                                        isPrevSiblingSelected={isPrevSiblingSelected}
+                                        isNextSiblingSelected={isNextSiblingSelected}
                                     />
                                 ) : (
                                     <TreeLeaf
@@ -261,6 +272,10 @@ const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
                                         renderItem={renderItem}
                                         cutItemIds={cutItemIds}
                                         onNodeClick={onNodeClick}
+                                        isFirstChild={index === 0}
+                                        isParentSelected={isParentSelected}
+                                        isPrevSiblingSelected={isPrevSiblingSelected}
+                                        isNextSiblingSelected={isNextSiblingSelected}
                                     />
                                 )}
                             </li>
@@ -287,6 +302,10 @@ const TreeNode = ({
     cutItemIds,
     level = 0,
     onNodeClick,
+    isFirstChild,
+    isParentSelected,
+    isPrevSiblingSelected,
+    isNextSiblingSelected,
 }: {
     item: TreeDataItem
     handleSelectChange: (item: TreeDataItem | undefined) => void
@@ -301,6 +320,10 @@ const TreeNode = ({
     cutItemIds: string[]
     level?: number
     onNodeClick?: (item: TreeDataItem, event: React.MouseEvent) => void
+    isFirstChild?: boolean
+    isParentSelected?: boolean
+    isPrevSiblingSelected?: boolean
+    isNextSiblingSelected?: boolean
 }) => {
     const [value, setValue] = React.useState(
         expandedItemIds.includes(item.id) ? [item.id] : []
@@ -352,13 +375,13 @@ const TreeNode = ({
                         treeVariants(),
                         isSelected && selectedTreeVariants(),
                         // Remove bottom border/radius if next sibling is selected
-                        "group-[&:has(+_.peer[data-selected=true])]/li:before:rounded-b-none group-[&:has(+_.peer[data-selected=true])]/li:before:border-b-0",
+                        isNextSiblingSelected && "before:rounded-b-none before:border-b-0",
                         // Remove top border/radius if previous sibling is selected
-                        "group-[.peer[data-selected=true]_+_&]/li:before:rounded-t-none group-[.peer[data-selected=true]_+_&]/li:before:border-t-0",
+                        isPrevSiblingSelected && "before:rounded-t-none before:border-t-0",
                         // Remove bottom border/radius if first child is selected
                         isFirstChildSelected && "before:rounded-b-none before:border-b-0",
                         // Remove top border/radius if first child of selected parent
-                        "group-[&:first-child]/li:group-data-[parent-selected=true]/content:before:rounded-t-none group-[&:first-child]/li:group-data-[parent-selected=true]/content:before:border-t-0",
+                        (isFirstChild && isParentSelected) && "before:rounded-t-none before:border-t-0",
                         // Full width selection background
                         "before:left-[calc(var(--level)*-1.3125rem)] before:w-[calc(100%+var(--level)*1.3125rem)]",
                         isCut && cutTreeVariants(),
@@ -434,6 +457,8 @@ const TreeNode = ({
                             cutItemIds={cutItemIds}
                             level={level + 1}
                             onNodeClick={onNodeClick}
+                            isParentSelected={isSelected}
+                            isParentNextSiblingSelected={isNextSiblingSelected}
                         />
                     </div>
                 </AccordionContent>
@@ -456,6 +481,10 @@ const TreeLeaf = React.forwardRef<
         renderItem?: (params: TreeRenderItemParams) => React.ReactNode
         cutItemIds: string[]
         onNodeClick?: (item: TreeDataItem, event: React.MouseEvent) => void
+        isFirstChild?: boolean
+        isParentSelected?: boolean
+        isPrevSiblingSelected?: boolean
+        isNextSiblingSelected?: boolean
     }
 >(
     (
@@ -472,6 +501,10 @@ const TreeLeaf = React.forwardRef<
             renderItem,
             cutItemIds,
             onNodeClick,
+            isFirstChild,
+            isParentSelected,
+            isPrevSiblingSelected,
+            isNextSiblingSelected,
             ...props
         },
         ref
@@ -517,11 +550,11 @@ const TreeLeaf = React.forwardRef<
                     className,
                     isSelected && selectedTreeVariants(),
                     // Remove bottom border/radius if next sibling is selected
-                    "group-[&:has(+_.peer[data-selected=true])]/li:before:rounded-b-none group-[&:has(+_.peer[data-selected=true])]/li:before:border-b-0",
+                    isNextSiblingSelected && "before:rounded-b-none before:border-b-0",
                     // Remove top border/radius if previous sibling is selected
-                    "group-[.peer[data-selected=true]_+_&]/li:before:rounded-t-none group-[.peer[data-selected=true]_+_&]/li:before:border-t-0",
+                    isPrevSiblingSelected && "before:rounded-t-none before:border-t-0",
                     // Remove top border/radius if first child of selected parent
-                    "group-[&:first-child]/li:group-data-[parent-selected=true]/content:before:rounded-t-none group-[&:first-child]/li:group-data-[parent-selected=true]/content:before:border-t-0",
+                    (isFirstChild && isParentSelected) && "before:rounded-t-none before:border-t-0",
                     // Full width selection background
                     "before:left-[calc(var(--level)*-1.3125rem)] before:w-[calc(100%+var(--level)*1.3125rem)]",
                     isCut && cutTreeVariants(),
