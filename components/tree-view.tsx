@@ -413,6 +413,11 @@ const TreeNode = ({
                 <AccordionContent
                     className="group/content"
                     data-parent-selected={isSelected}
+                    style={{
+                        marginLeft: `calc(${level} * -1.3125rem)`,
+                        paddingLeft: `calc(${level} * 1.3125rem)`,
+                        width: `calc(100% + ${level} * 1.3125rem)`
+                    }}
                 >
                     <div className="ml-4 pl-1 border-l pb-1 pt-0 group-data-[parent-selected=true]/content:pb-0">
                         <TreeItem
