@@ -651,9 +651,38 @@ export default function JsonEditor() {
       }
    }, [selectedIds, lastSelectedId, jsonData, cutIds])
 
+   const handleDelete = useCallback(() => {
+      if (selectedIds.size === 0) return
+
+      // Find the node to delete (handling single selection for now)
+      const idToDelete = Array.from(selectedIds)[0]
+
+      const findNode = (nodes: TreeDataItem[]): TreeDataItem | null => {
+         for (const node of nodes) {
+            if (node.id === idToDelete) return node
+            if (node.children) {
+               const found = findNode(node.children)
+               if (found) return found
+            }
+         }
+         return null
+      }
+
+      const node = findNode(treeData)
+      if (node) {
+         handleDeleteRequest(node)
+      }
+   }, [selectedIds, treeData, dontShowDeleteConfirm, jsonData])
+
    useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {
          if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+
+         if (e.key === 'Delete') {
+            e.preventDefault()
+            handleDelete()
+            return
+         }
 
          if (e.ctrlKey || e.metaKey) {
             const key = e.key.toLowerCase()
@@ -678,7 +707,7 @@ export default function JsonEditor() {
 
       window.addEventListener('keydown', handleKeyDown)
       return () => window.removeEventListener('keydown', handleKeyDown)
-   }, [handleCopy, handleCut, handlePaste])
+   }, [handleCopy, handleCut, handlePaste, handleDelete, handleUndo, handleRedo])
 
    return (
       <div className="h-screen w-full flex flex-col gap-4 p-4">
@@ -829,6 +858,10 @@ export default function JsonEditor() {
                               <ContextMenuItem onClick={handlePaste}>
                                  Paste
                                  <ContextMenuShortcut>Ctrl+V</ContextMenuShortcut>
+                              </ContextMenuItem>
+                              <ContextMenuItem onClick={() => handleDeleteRequest(item)} className="text-destructive focus:text-destructive">
+                                 Delete
+                                 <ContextMenuShortcut>Del</ContextMenuShortcut>
                               </ContextMenuItem>
                            </ContextMenuContent>
                         </ContextMenu>
