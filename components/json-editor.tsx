@@ -768,12 +768,12 @@ export default function JsonEditor() {
                      className="w-full"
                      initialSelectedItemIds={Array.from(selectedIds)}
                      cutItemIds={Array.from(cutIds)}
+                     onNodeClick={(item, e) => handleNodeClick(e, item)}
                      renderItem={({ item, isLeaf, isSelected }) => (
                         <ContextMenu>
                            <ContextMenuTrigger asChild>
                               <div
                                  className="flex items-center gap-2 flex-1 min-w-0 group/item"
-                                 onClick={(e) => handleNodeClick(e, item)}
                                  onContextMenu={(e) => {
                                     if (!selectedIds.has(item.id)) {
                                        handleNodeClick(e, item)

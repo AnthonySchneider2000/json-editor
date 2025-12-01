@@ -61,6 +61,7 @@ type TreeProps = React.HTMLAttributes<HTMLDivElement> & {
     renderItem?: (params: TreeRenderItemParams) => React.ReactNode
     multiSelect?: boolean
     cutItemIds?: string[]
+    onNodeClick?: (item: TreeDataItem, event: React.MouseEvent) => void
 }
 
 const TreeView = React.forwardRef<HTMLDivElement, TreeProps>(
@@ -77,6 +78,7 @@ const TreeView = React.forwardRef<HTMLDivElement, TreeProps>(
             renderItem,
             multiSelect = true,
             cutItemIds = [],
+            onNodeClick,
             ...props
         },
         ref
@@ -165,6 +167,7 @@ const TreeView = React.forwardRef<HTMLDivElement, TreeProps>(
                     renderItem={renderItem}
                     cutItemIds={cutItemIds}
                     level={0}
+                    onNodeClick={onNodeClick}
                     {...props}
                 />
                 <div
@@ -210,6 +213,7 @@ const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
             expandAll,
             initialSelectedItemIds,
             onDocumentDrag,
+            onNodeClick,
             ...props
         },
         ref
@@ -236,6 +240,7 @@ const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
                                     draggedItem={draggedItem}
                                     renderItem={renderItem}
                                     cutItemIds={cutItemIds}
+                                    onNodeClick={onNodeClick}
                                 />
                             ) : (
                                 <TreeLeaf
@@ -249,6 +254,7 @@ const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
                                     draggedItem={draggedItem}
                                     renderItem={renderItem}
                                     cutItemIds={cutItemIds}
+                                    onNodeClick={onNodeClick}
                                 />
                             )}
                         </li>
@@ -273,6 +279,7 @@ const TreeNode = ({
     renderItem,
     cutItemIds,
     level = 0,
+    onNodeClick,
 }: {
     item: TreeDataItem
     handleSelectChange: (item: TreeDataItem | undefined) => void
@@ -286,6 +293,7 @@ const TreeNode = ({
     renderItem?: (params: TreeRenderItemParams) => React.ReactNode
     cutItemIds: string[]
     level?: number
+    onNodeClick?: (item: TreeDataItem, event: React.MouseEvent) => void
 }) => {
     const [value, setValue] = React.useState(
         expandedItemIds.includes(item.id) ? [item.id] : []
@@ -338,9 +346,10 @@ const TreeNode = ({
                         item.className,
                         "flex items-center py-2 cursor-pointer"
                     )}
-                    onClick={() => {
+                    onClick={(e) => {
                         handleSelectChange(item)
                         item.onClick?.()
+                        onNodeClick?.(item, e)
                     }}
                     draggable={!!item.draggable}
                     onDragStart={onDragStart}
@@ -395,6 +404,7 @@ const TreeNode = ({
                         renderItem={renderItem}
                         cutItemIds={cutItemIds}
                         level={level + 1}
+                        onNodeClick={onNodeClick}
                     />
                 </AccordionContent>
             </AccordionPrimitive.Item>
@@ -415,6 +425,7 @@ const TreeLeaf = React.forwardRef<
         draggedItem: TreeDataItem | null
         renderItem?: (params: TreeRenderItemParams) => React.ReactNode
         cutItemIds: string[]
+        onNodeClick?: (item: TreeDataItem, event: React.MouseEvent) => void
     }
 >(
     (
@@ -430,6 +441,7 @@ const TreeLeaf = React.forwardRef<
             draggedItem,
             renderItem,
             cutItemIds,
+            onNodeClick,
             ...props
         },
         ref
@@ -478,10 +490,11 @@ const TreeLeaf = React.forwardRef<
                     item.disabled && 'opacity-50 cursor-not-allowed pointer-events-none',
                     item.className
                 )}
-                onClick={() => {
+                onClick={(e) => {
                     if (item.disabled) return
                     handleSelectChange(item)
                     item.onClick?.()
+                    onNodeClick?.(item, e)
                 }}
                 draggable={!!item.draggable && !item.disabled}
                 onDragStart={onDragStart}
