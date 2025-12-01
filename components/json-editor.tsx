@@ -484,25 +484,46 @@ export default function JsonEditor() {
    const handleCopy = useCallback(() => {
       if (selectedIds.size === 0) return
 
-      const selectedItems: any[] = []
       const flatIds = flattenTree(treeData)
-
-      // Sort selected items by order in tree
       const sortedIds = Array.from(selectedIds).sort((a, b) => flatIds.indexOf(a) - flatIds.indexOf(b))
 
-      sortedIds.forEach(id => {
-         const path = id.split('.').slice(1)
-         if (path.length === 0) {
-            selectedItems.push(jsonData)
-         } else {
-            const val = _.get(jsonData, path)
-            selectedItems.push(val)
-         }
-      })
+      // Check if we are copying from an object or array
+      // We look at the parent of the first selected item
+      const firstId = sortedIds[0]
+      const firstPath = firstId.split('.').slice(1)
+      const parentPath = firstPath.slice(0, -1)
+      const parent = parentPath.length === 0 ? jsonData : _.get(jsonData, parentPath)
+      const isParentArray = Array.isArray(parent)
 
-      const textToCopy = selectedItems.length === 1
-         ? JSON.stringify(selectedItems[0], null, 2)
-         : JSON.stringify(selectedItems, null, 2)
+      let textToCopy = ''
+
+      if (isParentArray) {
+         const selectedItems: any[] = []
+         sortedIds.forEach(id => {
+            const path = id.split('.').slice(1)
+            if (path.length === 0) {
+               selectedItems.push(jsonData)
+            } else {
+               const val = _.get(jsonData, path)
+               selectedItems.push(val)
+            }
+         })
+         textToCopy = JSON.stringify(selectedItems, null, 2)
+      } else {
+         const selectedItems: Record<string, any> = {}
+         sortedIds.forEach(id => {
+            const path = id.split('.').slice(1)
+            const key = path[path.length - 1]
+            if (path.length === 0) {
+               // Root selected?
+               selectedItems['root'] = jsonData
+            } else {
+               const val = _.get(jsonData, path)
+               selectedItems[key] = val
+            }
+         })
+         textToCopy = JSON.stringify(selectedItems, null, 2)
+      }
 
       navigator.clipboard.writeText(textToCopy)
       setCutIds(new Set()) // Clear cut on copy
@@ -559,10 +580,24 @@ export default function JsonEditor() {
                targetContainer.push(...itemsToPaste)
             }
          } else if (typeof targetContainer === 'object') {
-            itemsToPaste.forEach((item, i) => {
-               const newKey = `new_item_${Date.now()}_${i}`
-               targetContainer[newKey] = item
-            })
+            // If pastedData is an object (and not an array), try to use its keys
+            if (!Array.isArray(pastedData) && typeof pastedData === 'object' && pastedData !== null) {
+               Object.keys(pastedData).forEach(key => {
+                  let finalKey = key
+                  let counter = 1
+                  while (targetContainer[finalKey] !== undefined) {
+                     finalKey = `${key}_copy${counter}`
+                     counter++
+                  }
+                  targetContainer[finalKey] = pastedData[key]
+               })
+            } else {
+               // Fallback for arrays or primitives
+               itemsToPaste.forEach((item, i) => {
+                  const newKey = `new_item_${Date.now()}_${i}`
+                  targetContainer[newKey] = item
+               })
+            }
          }
 
          // If this was a cut operation, remove original items
@@ -611,19 +646,20 @@ export default function JsonEditor() {
          if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
 
          if (e.ctrlKey || e.metaKey) {
-            if (e.key === 'c') {
+            const key = e.key.toLowerCase()
+            if (key === 'c') {
                e.preventDefault()
                handleCopy()
-            } else if (e.key === 'x') {
+            } else if (key === 'x') {
                e.preventDefault()
                handleCut()
-            } else if (e.key === 'v') {
+            } else if (key === 'v') {
                e.preventDefault()
                handlePaste()
-            } else if (e.key === 'z') {
+            } else if (key === 'z') {
                e.preventDefault()
                handleUndo()
-            } else if (e.key === 'y') {
+            } else if (key === 'y') {
                e.preventDefault()
                handleRedo()
             }
@@ -688,6 +724,11 @@ export default function JsonEditor() {
                               <div
                                  className="flex items-center gap-2 flex-1 min-w-0 group/item"
                                  onClick={(e) => handleNodeClick(e, item)}
+                                 onContextMenu={(e) => {
+                                    if (!selectedIds.has(item.id)) {
+                                       handleNodeClick(e, item)
+                                    }
+                                 }}
                               >
                                  {item.icon && <item.icon className="h-4 w-4 shrink-0 text-muted-foreground" />}
 
