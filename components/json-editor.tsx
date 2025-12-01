@@ -7,13 +7,20 @@ import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
    Dialog,
    DialogContent,
    DialogHeader,
    DialogTitle,
    DialogFooter,
+   DialogDescription,
 } from "@/components/ui/dialog"
+import {
+   Popover,
+   PopoverContent,
+   PopoverTrigger,
+} from "@/components/ui/popover"
 import {
    FileJson,
    Folder,
@@ -25,10 +32,12 @@ import {
    MoreHorizontal,
    Plus,
    Trash,
-   Edit2
+   Edit2,
+   Check
 } from 'lucide-react'
 import _ from 'lodash'
 import { cn } from '@/lib/utils'
+import { z } from 'zod'
 
 const initialJson = {
    "name": "Crimson Voyager",
@@ -41,6 +50,9 @@ const initialJson = {
    }
 }
 
+const TYPES = ['string', 'number', 'boolean', 'object', 'array', 'null'] as const
+type JsonType = typeof TYPES[number]
+
 export default function JsonEditor() {
    const [jsonString, setJsonString] = useState(JSON.stringify(initialJson, null, 2))
    const [jsonData, setJsonData] = useState<any>(initialJson)
@@ -52,9 +64,15 @@ export default function JsonEditor() {
    const [editingNode, setEditingNode] = useState<TreeDataItem | null>(null)
    const [editKey, setEditKey] = useState('')
    const [editValue, setEditValue] = useState('')
-   const [editType, setEditType] = useState('string')
+   const [editType, setEditType] = useState<JsonType>('string')
    const [isAdding, setIsAdding] = useState(false)
    const [parentNode, setParentNode] = useState<TreeDataItem | null>(null)
+   const [validationError, setValidationError] = useState<string | null>(null)
+
+   // Delete Confirmation State
+   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
+   const [nodeToDelete, setNodeToDelete] = useState<TreeDataItem | null>(null)
+   const [dontShowDeleteConfirm, setDontShowDeleteConfirm] = useState(false)
 
    const parseJson = useCallback((str: string) => {
       try {
@@ -74,10 +92,10 @@ export default function JsonEditor() {
       parseJson(str)
    }
 
-   const getType = (value: any) => {
+   const getType = (value: any): JsonType => {
       if (Array.isArray(value)) return 'array'
       if (value === null) return 'null'
-      return typeof value
+      return typeof value as JsonType
    }
 
    const getIcon = (type: string) => {
@@ -91,34 +109,27 @@ export default function JsonEditor() {
       }
    }
 
-   const handleDelete = (node: TreeDataItem) => {
+   const handleDeleteRequest = (node: TreeDataItem) => {
+      if (dontShowDeleteConfirm) {
+         performDelete(node)
+      } else {
+         setNodeToDelete(node)
+         setIsDeleteConfirmOpen(true)
+      }
+   }
+
+   const performDelete = (node: TreeDataItem) => {
       const path = node.id.split('.')
       // If root
       if (path.length === 1 && path[0] === 'root') {
-         // Cannot delete root? Or clear it?
          return
       }
 
       const newJson = _.cloneDeep(jsonData)
-
-      // We need to find the parent and remove the key/index
-      // The id is like "root.key.subkey"
-      // But wait, my id generation needs to be consistent.
-      // Let's assume id is the path.
-
-      // Remove 'root.' prefix for lodash path
-      const lodashPath = path.slice(1).join('.')
-
-      if (!lodashPath) return // Root
-
-      // Use _.unset? It works for objects, for arrays it leaves undefined.
-      // For arrays we need to splice.
-
       const parentPath = path.slice(1, -1).join('.')
       const key = path[path.length - 1]
 
       if (parentPath === '') {
-         // Top level property
          if (Array.isArray(newJson)) {
             newJson.splice(parseInt(key), 1)
          } else {
@@ -135,14 +146,17 @@ export default function JsonEditor() {
 
       setJsonData(newJson)
       setJsonString(JSON.stringify(newJson, null, 2))
+      setIsDeleteConfirmOpen(false)
+      setNodeToDelete(null)
    }
 
    const handleEdit = (node: TreeDataItem) => {
       setEditingNode(node)
       setEditKey(node.name)
       setEditValue(String(node.value))
-      setEditType(node.type || 'string')
+      setEditType(node.type as JsonType || 'string')
       setIsAdding(false)
+      setValidationError(null)
       setIsDialogOpen(true)
    }
 
@@ -152,10 +166,31 @@ export default function JsonEditor() {
       setEditValue('')
       setEditType('string')
       setIsAdding(true)
+      setValidationError(null)
       setIsDialogOpen(true)
    }
 
+   const validateValue = (value: string, type: JsonType) => {
+      try {
+         if (type === 'number') {
+            z.number().parse(Number(value))
+            if (isNaN(Number(value))) throw new Error("Invalid number")
+         }
+         if (type === 'boolean') {
+            if (value !== 'true' && value !== 'false') throw new Error("Invalid boolean")
+         }
+         return true
+      } catch (e) {
+         return false
+      }
+   }
+
    const saveEdit = () => {
+      if (!validateValue(editValue, editType)) {
+         setValidationError(`Invalid value for type ${editType}`)
+         return
+      }
+
       const newJson = _.cloneDeep(jsonData)
       let val: any = editValue
 
@@ -172,6 +207,10 @@ export default function JsonEditor() {
          if (Array.isArray(parent)) {
             parent.push(val)
          } else {
+            if (!editKey) {
+               setValidationError("Key is required")
+               return
+            }
             parent[editKey] = val
          }
       } else if (editingNode) {
@@ -181,21 +220,17 @@ export default function JsonEditor() {
 
          const targetParent = parentPath.length === 0 ? newJson : _.get(newJson, parentPath)
 
-         // If renaming key in object
          if (!Array.isArray(targetParent) && oldKey !== editKey) {
-            // Preserve order? Hard with standard JS objects, but let's just delete and add
+            if (!editKey) {
+               setValidationError("Key is required")
+               return
+            }
             const temp = targetParent[oldKey]
             delete targetParent[oldKey]
             targetParent[editKey] = val
          } else {
-            // Just set value
             if (path.length === 0) {
-               // Root edit?
-               // If editing root value (e.g. primitive), we can't set it on newJson if newJson is that primitive.
-               // But jsonData is usually object/array. If root is primitive, we handle it via setJsonData directly?
-               // But here newJson is the clone.
-               // If newJson is primitive, we can't mutate it by reference.
-               // But our initialJson is object.
+               // Root edit - not supported for now as it replaces whole doc
             } else {
                _.set(newJson, path, val)
             }
@@ -205,6 +240,26 @@ export default function JsonEditor() {
       setJsonData(newJson)
       setJsonString(JSON.stringify(newJson, null, 2))
       setIsDialogOpen(false)
+   }
+
+   const changeType = (node: TreeDataItem, newType: JsonType) => {
+      const path = node.id.split('.').slice(1)
+      if (path.length === 0) return // Don't change root type for now
+
+      const newJson = _.cloneDeep(jsonData)
+      let newVal: any = node.value
+
+      // Simple type conversion or reset
+      if (newType === 'string') newVal = String(newVal)
+      else if (newType === 'number') newVal = Number(newVal) || 0
+      else if (newType === 'boolean') newVal = Boolean(newVal)
+      else if (newType === 'null') newVal = null
+      else if (newType === 'object') newVal = {}
+      else if (newType === 'array') newVal = []
+
+      _.set(newJson, path, newVal)
+      setJsonData(newJson)
+      setJsonString(JSON.stringify(newJson, null, 2))
    }
 
    const generateTreeData = useCallback((data: any, path: string = 'root'): TreeDataItem[] => {
@@ -222,7 +277,7 @@ export default function JsonEditor() {
             id,
             name: key,
             value: value,
-            type: type as any,
+            type: type,
             children: isObject ? generateTreeData(value, id) : undefined,
             icon: getIcon(type),
             actions: (
@@ -235,7 +290,7 @@ export default function JsonEditor() {
                   <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); handleEdit(node) }}>
                      <Edit2 className="h-3 w-3" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={(e) => { e.stopPropagation(); handleDelete(node) }}>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={(e) => { e.stopPropagation(); handleDeleteRequest(node) }}>
                      <Trash className="h-3 w-3" />
                   </Button>
                </div>
@@ -243,7 +298,7 @@ export default function JsonEditor() {
          }
          return node
       })
-   }, [jsonData]) // Depend on jsonData to refresh actions closures if needed, though mostly stateless
+   }, [jsonData, dontShowDeleteConfirm])
 
    useEffect(() => {
       if (jsonData) {
@@ -252,7 +307,7 @@ export default function JsonEditor() {
             id: 'root',
             name: 'root',
             value: jsonData,
-            type: getType(jsonData) as any,
+            type: getType(jsonData),
             children: rootChildren,
             icon: getIcon(getType(jsonData)),
             actions: (
@@ -291,7 +346,7 @@ export default function JsonEditor() {
                      data={treeData}
                      className="w-full"
                      renderItem={({ item, isLeaf }) => (
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-1 min-w-0 group/item">
                            {item.icon && <item.icon className="h-4 w-4 shrink-0 text-muted-foreground" />}
                            <span className="font-medium text-foreground">{item.name}</span>
                            {isLeaf && (
@@ -299,9 +354,40 @@ export default function JsonEditor() {
                                  : {String(item.value)}
                               </span>
                            )}
-                           <span className="text-xs text-muted-foreground/50 ml-2">
-                              {item.type}
-                           </span>
+                           <Popover>
+                              <PopoverTrigger asChild>
+                                 <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-5 px-1.5 text-[10px] text-muted-foreground/50 hover:text-foreground ml-2"
+                                    onClick={(e) => e.stopPropagation()}
+                                 >
+                                    {item.type}
+                                 </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-32 p-1" align="start">
+                                 <div className="grid gap-1">
+                                    {TYPES.map((t) => (
+                                       <Button
+                                          key={t}
+                                          variant="ghost"
+                                          size="sm"
+                                          className={cn(
+                                             "justify-start h-7 text-xs",
+                                             item.type === t && "bg-accent"
+                                          )}
+                                          onClick={(e) => {
+                                             e.stopPropagation()
+                                             changeType(item, t)
+                                          }}
+                                       >
+                                          {t}
+                                          {item.type === t && <Check className="ml-auto h-3 w-3" />}
+                                       </Button>
+                                    ))}
+                                 </div>
+                              </PopoverContent>
+                           </Popover>
                         </div>
                      )}
                   />
@@ -309,6 +395,7 @@ export default function JsonEditor() {
             </ResizablePanel>
          </ResizablePanelGroup>
 
+         {/* Edit/Add Dialog */}
          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogContent>
                <DialogHeader>
@@ -330,15 +417,12 @@ export default function JsonEditor() {
                      <select
                         id="type"
                         value={editType}
-                        onChange={(e) => setEditType(e.target.value)}
+                        onChange={(e) => setEditType(e.target.value as JsonType)}
                         className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                      >
-                        <option value="string">String</option>
-                        <option value="number">Number</option>
-                        <option value="boolean">Boolean</option>
-                        <option value="object">Object</option>
-                        <option value="array">Array</option>
-                        <option value="null">Null</option>
+                        {TYPES.map(t => (
+                           <option key={t} value={t}>{t}</option>
+                        ))}
                      </select>
                   </div>
                   {['string', 'number', 'boolean'].includes(editType) && (
@@ -352,9 +436,41 @@ export default function JsonEditor() {
                         />
                      </div>
                   )}
+                  {validationError && (
+                     <div className="text-destructive text-sm text-center">{validationError}</div>
+                  )}
                </div>
                <DialogFooter>
                   <Button onClick={saveEdit}>Save changes</Button>
+               </DialogFooter>
+            </DialogContent>
+         </Dialog>
+
+         {/* Delete Confirmation Dialog */}
+         <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+            <DialogContent>
+               <DialogHeader>
+                  <DialogTitle>Delete Item</DialogTitle>
+                  <DialogDescription>
+                     Are you sure you want to delete <span className="font-bold text-foreground">{nodeToDelete?.name}</span>? This action cannot be undone.
+                  </DialogDescription>
+               </DialogHeader>
+               <div className="flex items-center space-x-2 py-4">
+                  <Checkbox
+                     id="dont-show"
+                     checked={dontShowDeleteConfirm}
+                     onCheckedChange={(c) => setDontShowDeleteConfirm(c as boolean)}
+                  />
+                  <label
+                     htmlFor="dont-show"
+                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                     Don't show this again
+                  </label>
+               </div>
+               <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsDeleteConfirmOpen(false)}>Cancel</Button>
+                  <Button variant="destructive" onClick={() => nodeToDelete && performDelete(nodeToDelete)}>Delete</Button>
                </DialogFooter>
             </DialogContent>
          </Dialog>

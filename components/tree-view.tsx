@@ -300,12 +300,13 @@ const TreeNode = ({
             onValueChange={(s) => setValue(s)}
         >
             <AccordionPrimitive.Item value={item.id}>
-                <AccordionTrigger
+                <div
                     className={cn(
                         treeVariants(),
                         isSelected && selectedTreeVariants(),
                         isDragOver && dragOverVariants(),
-                        item.className
+                        item.className,
+                        "flex items-center py-2 cursor-pointer"
                     )}
                     onClick={() => {
                         handleSelectChange(item)
@@ -317,6 +318,14 @@ const TreeNode = ({
                     onDragLeave={onDragLeave}
                     onDrop={onDrop}
                 >
+                    <AccordionPrimitive.Header asChild>
+                        <AccordionPrimitive.Trigger
+                            className="transition-all [&[data-state=open]>svg]:rotate-90 mr-1 focus:outline-none"
+                        >
+                            <ChevronRight className="h-4 w-4 shrink-0 transition-transform duration-200 text-accent-foreground/50" />
+                        </AccordionPrimitive.Trigger>
+                    </AccordionPrimitive.Header>
+
                     {renderItem ? (
                         renderItem({
                             item,
@@ -340,7 +349,7 @@ const TreeNode = ({
                             </TreeActions>
                         </>
                     )}
-                </AccordionTrigger>
+                </div>
                 <AccordionContent className="ml-4 pl-1 border-l">
                     <TreeItem
                         data={item.children ? item.children : item}
