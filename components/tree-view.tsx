@@ -11,7 +11,7 @@ const treeVariants = cva(
 )
 
 const selectedTreeVariants = cva(
-    'before:opacity-100 before:bg-blue-500 before:border-2 before:border-blue-600 text-white'
+    'before:opacity-100 before:bg-blue-500/30 before:border-2 before:border-blue-600'
 )
 
 const cutTreeVariants = cva(

@@ -603,40 +603,27 @@ export default function JsonEditor() {
                      cutItemIds={Array.from(cutIds)}
                      renderItem={({ item, isLeaf, isSelected }) => (
                         <div
-                           className={cn(
-                              "flex items-center gap-2 flex-1 min-w-0 group/item",
-                              isSelected && "text-white"
-                           )}
+                           className="flex items-center gap-2 flex-1 min-w-0 group/item"
                            onClick={(e) => handleNodeClick(e, item)}
                         >
-                           {item.icon && <item.icon className={cn("h-4 w-4 shrink-0", isSelected ? "text-white" : "text-muted-foreground")} />}
+                           {item.icon && <item.icon className="h-4 w-4 shrink-0 text-muted-foreground" />}
 
                            {item.isKeyEditable ? (
                               <Input
-                                 className={cn(
-                                    "h-6 px-1 py-0 w-auto min-w-[50px] max-w-[150px] border-none font-medium transition-colors",
-                                    isSelected
-                                       ? "bg-transparent text-white placeholder:text-white/70 focus:bg-white/20 selection:bg-white/30"
-                                       : "hover:bg-muted/50 focus:bg-background"
-                                 )}
+                                 className="h-6 px-1 py-0 w-auto min-w-[50px] max-w-[150px] border-none font-medium transition-colors hover:bg-muted/50 focus:bg-background"
                                  defaultValue={item.name}
                                  onBlur={(e) => handleKeyUpdate(item, e.target.value)}
                                  onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
                                  onClick={(e) => e.stopPropagation()}
                               />
                            ) : (
-                              <span className={cn("font-medium", isSelected ? "text-white" : "text-foreground")}>{item.name}</span>
+                              <span className="font-medium text-foreground">{item.name}</span>
                            )}
                            {isLeaf && (
                               <>
-                                 <span className={cn(isSelected ? "text-white/70" : "text-muted-foreground")}>:</span>
+                                 <span className="text-muted-foreground">:</span>
                                  <Input
-                                    className={cn(
-                                       "h-6 px-1 py-0 ml-1 min-w-[50px] w-auto border-none transition-colors",
-                                       isSelected
-                                          ? "bg-transparent text-white placeholder:text-white/70 focus:bg-white/20 selection:bg-white/30"
-                                          : "hover:bg-muted/50 focus:bg-background text-muted-foreground"
-                                    )}
+                                    className="h-6 px-1 py-0 ml-1 min-w-[50px] w-auto border-none transition-colors hover:bg-muted/50 focus:bg-background text-muted-foreground"
                                     defaultValue={String(item.value)}
                                     onBlur={(e) => handleValueUpdate(item, e.target.value)}
                                     onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
@@ -649,10 +636,7 @@ export default function JsonEditor() {
                                  <Button
                                     variant="ghost"
                                     size="sm"
-                                    className={cn(
-                                       "h-5 px-1.5 text-[10px] ml-2 transition-colors",
-                                       isSelected ? "text-white/70 hover:text-white hover:bg-white/20" : "text-muted-foreground/50 hover:text-foreground"
-                                    )}
+                                    className="h-5 px-1.5 text-[10px] ml-2 transition-colors text-muted-foreground/50 hover:text-foreground"
                                     onClick={(e) => e.stopPropagation()}
                                  >
                                     {item.type}
