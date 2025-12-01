@@ -388,6 +388,9 @@ export default function JsonEditor() {
                                  </div>
                               </PopoverContent>
                            </Popover>
+                           <div className="ml-auto opacity-0 group-hover/item:opacity-100 transition-opacity flex items-center">
+                              {item.actions}
+                           </div>
                         </div>
                      )}
                   />
