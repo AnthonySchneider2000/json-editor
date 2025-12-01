@@ -404,6 +404,8 @@ export default function JsonEditor() {
             type: type,
             isKeyEditable: !isArray,
             children: isObject ? generateTreeData(value, id) : undefined,
+            draggable: true,
+            droppable: true,
             icon: getIcon(type),
             actions: (
                <div className="flex items-center gap-1 bg-background/80 backdrop-blur-sm rounded-md p-0.5">
@@ -674,6 +676,60 @@ export default function JsonEditor() {
       }
    }, [selectedIds, treeData, dontShowDeleteConfirm, jsonData])
 
+   const handleReorder = useCallback((source: TreeDataItem, target: TreeDataItem) => {
+      // Check if they are siblings (share same parent path)
+      const sourcePath = source.id.split('.').slice(1)
+      const targetPath = target.id.split('.').slice(1)
+
+      const sourceParentPath = sourcePath.slice(0, -1).join('.')
+      const targetParentPath = targetPath.slice(0, -1).join('.')
+
+      if (sourceParentPath !== targetParentPath) return // Only allow reordering siblings
+
+      addToHistory(jsonData)
+      const newJson = _.cloneDeep(jsonData)
+
+      const parentPath = sourcePath.slice(0, -1)
+      const parent = parentPath.length === 0 ? newJson : _.get(newJson, parentPath)
+
+      const sourceKey = sourcePath[sourcePath.length - 1]
+      const targetKey = targetPath[targetPath.length - 1]
+
+      if (Array.isArray(parent)) {
+         const sourceIndex = parseInt(sourceKey)
+         const targetIndex = parseInt(targetKey)
+
+         const [movedItem] = parent.splice(sourceIndex, 1)
+         parent.splice(targetIndex, 0, movedItem)
+      } else if (typeof parent === 'object' && parent !== null) {
+         // Reorder object keys
+         const keys = Object.keys(parent)
+         const sourceIndex = keys.indexOf(sourceKey)
+         const targetIndex = keys.indexOf(targetKey)
+
+         if (sourceIndex !== -1 && targetIndex !== -1) {
+            keys.splice(sourceIndex, 1)
+            keys.splice(targetIndex, 0, sourceKey)
+
+            const newParent: any = {}
+            keys.forEach(k => {
+               newParent[k] = parent[k]
+            })
+
+            if (parentPath.length === 0) {
+               setJsonData(newParent)
+               setJsonString(JSON.stringify(newParent, null, 2))
+               return
+            } else {
+               _.set(newJson, parentPath, newParent)
+            }
+         }
+      }
+
+      setJsonData(newJson)
+      setJsonString(JSON.stringify(newJson, null, 2))
+   }, [jsonData, addToHistory])
+
    useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {
          if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
@@ -769,6 +825,7 @@ export default function JsonEditor() {
                      initialSelectedItemIds={Array.from(selectedIds)}
                      cutItemIds={Array.from(cutIds)}
                      onNodeClick={(item, e) => handleNodeClick(e, item)}
+                     onDocumentDrag={handleReorder}
                      renderItem={({ item, isLeaf, isSelected }) => (
                         <ContextMenu>
                            <ContextMenuTrigger asChild>
