@@ -419,7 +419,7 @@ const TreeNode = ({
                         width: `calc(100% + ${level} * 1.3125rem)`
                     }}
                 >
-                    <div className="ml-4 pl-1 border-l pb-1 pt-0 group-data-[parent-selected=true]/content:pb-0">
+                    <div className="ml-4 pl-1 border-l pt-0">
                         <TreeItem
                             data={item.children ? item.children : item}
                             selectedItemIds={selectedItemIds}
