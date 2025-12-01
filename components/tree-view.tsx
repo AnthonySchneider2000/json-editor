@@ -311,6 +311,8 @@ const TreeNode = ({
     const isCut = cutItemIds.includes(item.id)
     const isOpen = value.includes(item.id)
 
+    const isFirstChildSelected = item.children && item.children.length > 0 && selectedItemIds.includes(item.children[0].id) && isOpen
+
     const onDragStart = (e: React.DragEvent) => {
         if (!item.draggable) {
             e.preventDefault()
@@ -345,6 +347,7 @@ const TreeNode = ({
         >
             <AccordionPrimitive.Item value={item.id}>
                 <div
+                    style={{ '--level': level } as React.CSSProperties}
                     className={cn(
                         treeVariants(),
                         isSelected && selectedTreeVariants(),
@@ -352,6 +355,12 @@ const TreeNode = ({
                         "group-[&:has(+_.peer[data-selected=true])]/li:before:rounded-b-none group-[&:has(+_.peer[data-selected=true])]/li:before:border-b-0",
                         // Remove top border/radius if previous sibling is selected
                         "group-[.peer[data-selected=true]_+_&]/li:before:rounded-t-none group-[.peer[data-selected=true]_+_&]/li:before:border-t-0",
+                        // Remove bottom border/radius if first child is selected
+                        isFirstChildSelected && "before:rounded-b-none before:border-b-0",
+                        // Remove top border/radius if first child of selected parent
+                        "group-[&:first-child]/li:group-data-[parent-selected=true]/content:before:rounded-t-none group-[&:first-child]/li:group-data-[parent-selected=true]/content:before:border-t-0",
+                        // Full width selection background
+                        "before:left-[calc(var(--level)*-1.3125rem)] before:w-[calc(100%+var(--level)*1.3125rem)]",
                         isCut && cutTreeVariants(),
                         isDragOver && dragOverVariants(),
                         item.className,
@@ -401,22 +410,27 @@ const TreeNode = ({
                         </>
                     )}
                 </div>
-                <AccordionContent className="ml-4 pl-1 border-l">
-                    <TreeItem
-                        data={item.children ? item.children : item}
-                        selectedItemIds={selectedItemIds}
-                        handleSelectChange={handleSelectChange}
-                        expandedItemIds={expandedItemIds}
-                        defaultLeafIcon={defaultLeafIcon}
-                        defaultNodeIcon={defaultNodeIcon}
-                        handleDragStart={handleDragStart}
-                        handleDrop={handleDrop}
-                        draggedItem={draggedItem}
-                        renderItem={renderItem}
-                        cutItemIds={cutItemIds}
-                        level={level + 1}
-                        onNodeClick={onNodeClick}
-                    />
+                <AccordionContent
+                    className="group/content"
+                    data-parent-selected={isSelected}
+                >
+                    <div className="ml-4 pl-1 border-l pb-1 pt-0 group-data-[parent-selected=true]/content:pb-0">
+                        <TreeItem
+                            data={item.children ? item.children : item}
+                            selectedItemIds={selectedItemIds}
+                            handleSelectChange={handleSelectChange}
+                            expandedItemIds={expandedItemIds}
+                            defaultLeafIcon={defaultLeafIcon}
+                            defaultNodeIcon={defaultNodeIcon}
+                            handleDragStart={handleDragStart}
+                            handleDrop={handleDrop}
+                            draggedItem={draggedItem}
+                            renderItem={renderItem}
+                            cutItemIds={cutItemIds}
+                            level={level + 1}
+                            onNodeClick={onNodeClick}
+                        />
+                    </div>
                 </AccordionContent>
             </AccordionPrimitive.Item>
         </AccordionPrimitive.Root>
@@ -491,6 +505,7 @@ const TreeLeaf = React.forwardRef<
         return (
             <div
                 ref={ref}
+                style={{ '--level': level } as React.CSSProperties}
                 className={cn(
                     'flex text-left items-center py-2 cursor-pointer before:right-1',
                     treeVariants(),
@@ -500,6 +515,10 @@ const TreeLeaf = React.forwardRef<
                     "group-[&:has(+_.peer[data-selected=true])]/li:before:rounded-b-none group-[&:has(+_.peer[data-selected=true])]/li:before:border-b-0",
                     // Remove top border/radius if previous sibling is selected
                     "group-[.peer[data-selected=true]_+_&]/li:before:rounded-t-none group-[.peer[data-selected=true]_+_&]/li:before:border-t-0",
+                    // Remove top border/radius if first child of selected parent
+                    "group-[&:first-child]/li:group-data-[parent-selected=true]/content:before:rounded-t-none group-[&:first-child]/li:group-data-[parent-selected=true]/content:before:border-t-0",
+                    // Full width selection background
+                    "before:left-[calc(var(--level)*-1.3125rem)] before:w-[calc(100%+var(--level)*1.3125rem)]",
                     isCut && cutTreeVariants(),
                     isDragOver && dragOverVariants(),
                     item.disabled && 'opacity-50 cursor-not-allowed pointer-events-none',
@@ -581,7 +600,7 @@ const AccordionContent = React.forwardRef<
         )}
         {...props}
     >
-        <div className="pb-1 pt-0">{children}</div>
+        {children}
     </AccordionPrimitive.Content>
 ))
 AccordionContent.displayName = AccordionPrimitive.Content.displayName
