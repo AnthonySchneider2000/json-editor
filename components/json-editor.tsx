@@ -35,7 +35,15 @@ import {
    Edit2,
    Check,
    RotateCcw,
-   RotateCw
+   RotateCw,
+   Sun,
+   Moon,
+   Copy,
+   Scissors,
+   ClipboardPaste,
+   ChevronRight,
+   ChevronDown,
+   Trash2
 } from 'lucide-react'
 import _ from 'lodash'
 import { cn } from '@/lib/utils'
@@ -46,6 +54,7 @@ import {
    ContextMenuShortcut,
    ContextMenuTrigger,
 } from "@/components/ui/context-menu"
+import { useTheme } from "next-themes"
 import { z } from 'zod'
 
 const initialJson = {
@@ -63,6 +72,7 @@ const TYPES = ['string', 'number', 'boolean', 'object', 'array', 'null'] as cons
 type JsonType = typeof TYPES[number]
 
 export default function JsonEditor() {
+   const { theme, setTheme } = useTheme()
    const [jsonString, setJsonString] = useState(JSON.stringify(initialJson, null, 2))
    const [jsonData, setJsonData] = useState<any>(initialJson)
    const [error, setError] = useState<string | null>(null)
@@ -671,11 +681,12 @@ export default function JsonEditor() {
    }, [handleCopy, handleCut, handlePaste])
 
    return (
-      <div className="h-screen w-full flex flex-col p-4 gap-4">
+      <div className="h-screen w-full flex flex-col gap-4 p-4">
          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold">JSON Editor</h1>
             <div className="flex items-center gap-2">
-               <h1 className="text-2xl font-bold">JSON Editor</h1>
-               <div className="flex items-center gap-1 ml-4 border-l pl-4">
+               {error && <span className="text-destructive text-sm mr-4">{error}</span>}
+               <div className="flex items-center gap-1 mr-2">
                   <Button
                      variant="ghost"
                      size="icon"
@@ -695,8 +706,18 @@ export default function JsonEditor() {
                      <RotateCw className="h-4 w-4" />
                   </Button>
                </div>
+               <div className="h-4 w-[1px] bg-border mx-2" />
+               <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  title="Toggle Theme"
+               >
+                  <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                  <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                  <span className="sr-only">Toggle theme</span>
+               </Button>
             </div>
-            {error && <span className="text-destructive text-sm">{error}</span>}
          </div>
 
          <ResizablePanelGroup direction="horizontal" className="flex-1 rounded-lg border">
