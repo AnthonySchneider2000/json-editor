@@ -23,6 +23,7 @@ interface TreeDataItem {
     name: string
     value?: any
     type?: 'object' | 'array' | 'string' | 'number' | 'boolean' | 'null'
+    isKeyEditable?: boolean
     icon?: React.ComponentType<{ className?: string }>
     selectedIcon?: React.ComponentType<{ className?: string }>
     openIcon?: React.ComponentType<{ className?: string }>

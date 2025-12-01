@@ -262,10 +262,66 @@ export default function JsonEditor() {
       setJsonString(JSON.stringify(newJson, null, 2))
    }
 
+   const handleKeyUpdate = (node: TreeDataItem, newKey: string) => {
+      if (!newKey || newKey === node.name) return
+
+      const path = node.id.split('.').slice(1)
+      const parentPath = path.slice(0, -1)
+      const oldKey = path[path.length - 1]
+
+      const newJson = _.cloneDeep(jsonData)
+      const parent = parentPath.length === 0 ? newJson : _.get(newJson, parentPath)
+
+      if (Array.isArray(parent)) return
+
+      if (parent[newKey] !== undefined) return
+
+      const newParent: any = {}
+      Object.keys(parent).forEach(k => {
+         if (k === oldKey) {
+            newParent[newKey] = parent[oldKey]
+         } else {
+            newParent[k] = parent[k]
+         }
+      })
+
+      if (parentPath.length === 0) {
+         setJsonData(newParent)
+         setJsonString(JSON.stringify(newParent, null, 2))
+      } else {
+         _.set(newJson, parentPath, newParent)
+         setJsonData(newJson)
+         setJsonString(JSON.stringify(newJson, null, 2))
+      }
+   }
+
+   const handleValueUpdate = (node: TreeDataItem, newValueStr: string) => {
+      const path = node.id.split('.').slice(1)
+      if (path.length === 0) return
+
+      const newJson = _.cloneDeep(jsonData)
+      let newVal: any = newValueStr
+
+      if (node.type === 'number') {
+         const num = Number(newValueStr)
+         if (!isNaN(num)) newVal = num
+      } else if (node.type === 'boolean') {
+         newVal = newValueStr === 'true'
+      } else if (node.type === 'null') {
+         if (newValueStr === 'null') newVal = null
+      }
+
+      _.set(newJson, path, newVal)
+      setJsonData(newJson)
+      setJsonString(JSON.stringify(newJson, null, 2))
+   }
+
    const generateTreeData = useCallback((data: any, path: string = 'root'): TreeDataItem[] => {
       if (typeof data !== 'object' || data === null) {
          return []
       }
+
+      const isArray = Array.isArray(data)
 
       return Object.keys(data).map(key => {
          const value = data[key]
@@ -278,6 +334,7 @@ export default function JsonEditor() {
             name: key,
             value: value,
             type: type,
+            isKeyEditable: !isArray,
             children: isObject ? generateTreeData(value, id) : undefined,
             icon: getIcon(type),
             actions: (
@@ -287,9 +344,6 @@ export default function JsonEditor() {
                         <Plus className="h-3 w-3" />
                      </Button>
                   )}
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); handleEdit(node) }}>
-                     <Edit2 className="h-3 w-3" />
-                  </Button>
                   <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={(e) => { e.stopPropagation(); handleDeleteRequest(node) }}>
                      <Trash className="h-3 w-3" />
                   </Button>
@@ -348,11 +402,29 @@ export default function JsonEditor() {
                      renderItem={({ item, isLeaf }) => (
                         <div className="flex items-center gap-2 flex-1 min-w-0 group/item">
                            {item.icon && <item.icon className="h-4 w-4 shrink-0 text-muted-foreground" />}
-                           <span className="font-medium text-foreground">{item.name}</span>
+
+                           {item.isKeyEditable ? (
+                              <Input
+                                 className="h-6 px-1 py-0 w-auto min-w-[50px] max-w-[150px] border-none hover:bg-muted/50 focus:bg-background font-medium"
+                                 defaultValue={item.name}
+                                 onBlur={(e) => handleKeyUpdate(item, e.target.value)}
+                                 onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                                 onClick={(e) => e.stopPropagation()}
+                              />
+                           ) : (
+                              <span className="font-medium text-foreground">{item.name}</span>
+                           )}
                            {isLeaf && (
-                              <span className="text-muted-foreground truncate">
-                                 : {String(item.value)}
-                              </span>
+                              <>
+                                 <span className="text-muted-foreground">:</span>
+                                 <Input
+                                    className="h-6 px-1 py-0 ml-1 min-w-[50px] w-auto border-none hover:bg-muted/50 focus:bg-background text-muted-foreground"
+                                    defaultValue={String(item.value)}
+                                    onBlur={(e) => handleValueUpdate(item, e.target.value)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                                    onClick={(e) => e.stopPropagation()}
+                                 />
+                              </>
                            )}
                            <Popover>
                               <PopoverTrigger asChild>
@@ -365,6 +437,7 @@ export default function JsonEditor() {
                                     {item.type}
                                  </Button>
                               </PopoverTrigger>
+
                               <PopoverContent className="w-32 p-1" align="start">
                                  <div className="grid gap-1">
                                     {TYPES.map((t) => (
@@ -388,9 +461,12 @@ export default function JsonEditor() {
                                  </div>
                               </PopoverContent>
                            </Popover>
-                           <div className="ml-auto opacity-0 group-hover/item:opacity-100 transition-opacity flex items-center">
+
+                           <div className="opacity-0 group-hover/item:opacity-100 transition-opacity flex items-center">
                               {item.actions}
                            </div>
+
+
                         </div>
                      )}
                   />
