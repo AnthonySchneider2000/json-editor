@@ -33,7 +33,9 @@ import {
    Plus,
    Trash,
    Edit2,
-   Check
+   Check,
+   RotateCcw,
+   RotateCw
 } from 'lucide-react'
 import _ from 'lodash'
 import { cn } from '@/lib/utils'
@@ -74,10 +76,48 @@ export default function JsonEditor() {
    const [parentNode, setParentNode] = useState<TreeDataItem | null>(null)
    const [validationError, setValidationError] = useState<string | null>(null)
 
+   // History State
+   const [history, setHistory] = useState<{ past: any[], future: any[] }>({ past: [], future: [] })
+
    // Delete Confirmation State
    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
    const [nodeToDelete, setNodeToDelete] = useState<TreeDataItem | null>(null)
    const [dontShowDeleteConfirm, setDontShowDeleteConfirm] = useState(false)
+
+   const addToHistory = useCallback((data: any) => {
+      setHistory(prev => ({
+         past: [...prev.past, data],
+         future: []
+      }))
+   }, [])
+
+   const handleUndo = useCallback(() => {
+      if (history.past.length === 0) return
+
+      const previous = history.past[history.past.length - 1]
+      const newPast = history.past.slice(0, -1)
+
+      setHistory({
+         past: newPast,
+         future: [jsonData, ...history.future]
+      })
+      setJsonData(previous)
+      setJsonString(JSON.stringify(previous, null, 2))
+   }, [history, jsonData])
+
+   const handleRedo = useCallback(() => {
+      if (history.future.length === 0) return
+
+      const next = history.future[0]
+      const newFuture = history.future.slice(1)
+
+      setHistory({
+         past: [...history.past, jsonData],
+         future: newFuture
+      })
+      setJsonData(next)
+      setJsonString(JSON.stringify(next, null, 2))
+   }, [history, jsonData])
 
    const parseJson = useCallback((str: string) => {
       try {
@@ -124,6 +164,7 @@ export default function JsonEditor() {
    }
 
    const performDelete = (node: TreeDataItem) => {
+      addToHistory(jsonData)
       const path = node.id.split('.')
       // If root
       if (path.length === 1 && path[0] === 'root') {
@@ -197,6 +238,7 @@ export default function JsonEditor() {
          return
       }
 
+      addToHistory(jsonData)
       const newJson = _.cloneDeep(jsonData)
       let val: any = editValue
 
@@ -252,6 +294,7 @@ export default function JsonEditor() {
       const path = node.id.split('.').slice(1)
       if (path.length === 0) return // Don't change root type for now
 
+      addToHistory(jsonData)
       const newJson = _.cloneDeep(jsonData)
       let newVal: any = node.value
 
@@ -275,6 +318,7 @@ export default function JsonEditor() {
       const parentPath = path.slice(0, -1)
       const oldKey = path[path.length - 1]
 
+      addToHistory(jsonData)
       const newJson = _.cloneDeep(jsonData)
       const parent = parentPath.length === 0 ? newJson : _.get(newJson, parentPath)
 
@@ -305,6 +349,7 @@ export default function JsonEditor() {
       const path = node.id.split('.').slice(1)
       if (path.length === 0) return
 
+      addToHistory(jsonData)
       const newJson = _.cloneDeep(jsonData)
       let newVal: any = newValueStr
 
@@ -474,6 +519,7 @@ export default function JsonEditor() {
          const targetId = lastSelectedId
          const path = targetId.split('.').slice(1)
 
+         addToHistory(jsonData)
          const newJson = _.cloneDeep(jsonData)
 
          // Determine target container
@@ -567,6 +613,12 @@ export default function JsonEditor() {
             } else if (e.key === 'v') {
                e.preventDefault()
                handlePaste()
+            } else if (e.key === 'z') {
+               e.preventDefault()
+               handleUndo()
+            } else if (e.key === 'y') {
+               e.preventDefault()
+               handleRedo()
             }
          }
       }
@@ -578,7 +630,29 @@ export default function JsonEditor() {
    return (
       <div className="h-screen w-full flex flex-col p-4 gap-4">
          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold">JSON Editor</h1>
+            <div className="flex items-center gap-2">
+               <h1 className="text-2xl font-bold">JSON Editor</h1>
+               <div className="flex items-center gap-1 ml-4 border-l pl-4">
+                  <Button
+                     variant="ghost"
+                     size="icon"
+                     onClick={handleUndo}
+                     disabled={history.past.length === 0}
+                     title="Undo (Ctrl+Z)"
+                  >
+                     <RotateCcw className="h-4 w-4" />
+                  </Button>
+                  <Button
+                     variant="ghost"
+                     size="icon"
+                     onClick={handleRedo}
+                     disabled={history.future.length === 0}
+                     title="Redo (Ctrl+Y)"
+                  >
+                     <RotateCw className="h-4 w-4" />
+                  </Button>
+               </div>
+            </div>
             {error && <span className="text-destructive text-sm">{error}</span>}
          </div>
 
