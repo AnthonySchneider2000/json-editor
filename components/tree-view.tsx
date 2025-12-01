@@ -7,7 +7,7 @@ import { cva } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
 const treeVariants = cva(
-    'group hover:before:opacity-100 before:absolute before:rounded-lg before:left-0 px-2 before:w-full before:opacity-0 before:bg-accent/70 before:inset-y-0 before:-z-10 relative isolate'
+    'group hover:before:opacity-100 before:absolute before:rounded-lg before:left-0 px-2 before:w-full before:opacity-0 before:bg-accent/70 before:inset-y-0 before:-z-10 relative isolate select-none'
 )
 
 const selectedTreeVariants = cva(
