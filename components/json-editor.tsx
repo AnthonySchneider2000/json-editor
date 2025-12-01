@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { TreeView, TreeDataItem } from '@/components/tree-view'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable'
 import { Textarea } from '@/components/ui/textarea'
@@ -58,6 +58,11 @@ export default function JsonEditor() {
    const [jsonData, setJsonData] = useState<any>(initialJson)
    const [error, setError] = useState<string | null>(null)
    const [treeData, setTreeData] = useState<TreeDataItem[]>([])
+
+   // Selection State
+   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+   const [lastSelectedId, setLastSelectedId] = useState<string | null>(null)
+   const [cutIds, setCutIds] = useState<Set<string>>(new Set())
 
    // Edit Dialog State
    const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -148,6 +153,7 @@ export default function JsonEditor() {
       setJsonString(JSON.stringify(newJson, null, 2))
       setIsDeleteConfirmOpen(false)
       setNodeToDelete(null)
+      setSelectedIds(new Set())
    }
 
    const handleEdit = (node: TreeDataItem) => {
@@ -375,6 +381,200 @@ export default function JsonEditor() {
       }
    }, [jsonData, generateTreeData])
 
+   // Helper to flatten tree for range selection
+   const flattenTree = (items: TreeDataItem[]): string[] => {
+      let ids: string[] = []
+      for (const item of items) {
+         ids.push(item.id)
+         if (item.children) {
+            ids = ids.concat(flattenTree(item.children))
+         }
+      }
+      return ids
+   }
+
+   const handleNodeClick = (e: React.MouseEvent, node: TreeDataItem) => {
+      e.stopPropagation()
+
+      const newSelectedIds = new Set(selectedIds)
+
+      if (e.ctrlKey || e.metaKey) {
+         // Toggle
+         if (newSelectedIds.has(node.id)) {
+            newSelectedIds.delete(node.id)
+         } else {
+            newSelectedIds.add(node.id)
+            setLastSelectedId(node.id)
+         }
+      } else if (e.shiftKey && lastSelectedId) {
+         // Range select
+         const flatIds = flattenTree(treeData)
+         const startIdx = flatIds.indexOf(lastSelectedId)
+         const endIdx = flatIds.indexOf(node.id)
+
+         if (startIdx !== -1 && endIdx !== -1) {
+            const [min, max] = [Math.min(startIdx, endIdx), Math.max(startIdx, endIdx)]
+            const range = flatIds.slice(min, max + 1)
+            newSelectedIds.clear()
+            range.forEach(id => newSelectedIds.add(id))
+         }
+      } else {
+         // Single select
+         newSelectedIds.clear()
+         newSelectedIds.add(node.id)
+         setLastSelectedId(node.id)
+      }
+
+      setSelectedIds(newSelectedIds)
+   }
+
+   // Clipboard operations
+   const handleCopy = useCallback(() => {
+      if (selectedIds.size === 0) return
+
+      const selectedItems: any[] = []
+      const flatIds = flattenTree(treeData)
+
+      // Sort selected items by order in tree
+      const sortedIds = Array.from(selectedIds).sort((a, b) => flatIds.indexOf(a) - flatIds.indexOf(b))
+
+      sortedIds.forEach(id => {
+         const path = id.split('.').slice(1)
+         if (path.length === 0) {
+            selectedItems.push(jsonData)
+         } else {
+            const val = _.get(jsonData, path)
+            selectedItems.push(val)
+         }
+      })
+
+      const textToCopy = selectedItems.length === 1
+         ? JSON.stringify(selectedItems[0], null, 2)
+         : JSON.stringify(selectedItems, null, 2)
+
+      navigator.clipboard.writeText(textToCopy)
+      setCutIds(new Set()) // Clear cut on copy
+   }, [selectedIds, jsonData, treeData])
+
+   const handleCut = useCallback(() => {
+      if (selectedIds.size === 0) return
+      handleCopy()
+      setCutIds(new Set(selectedIds))
+   }, [selectedIds, handleCopy])
+
+   const handlePaste = useCallback(async () => {
+      if (selectedIds.size === 0) return
+
+      try {
+         const text = await navigator.clipboard.readText()
+         const pastedData = JSON.parse(text)
+
+         if (!lastSelectedId) return
+
+         const targetId = lastSelectedId
+         const path = targetId.split('.').slice(1)
+
+         const newJson = _.cloneDeep(jsonData)
+
+         // Determine target container
+         let targetContainerPath = path
+         let targetContainer = path.length === 0 ? newJson : _.get(newJson, path)
+         let insertIndex = -1 // Append by default
+
+         if (!Array.isArray(targetContainer) && typeof targetContainer !== 'object') {
+            // Target is a leaf, paste into parent
+            targetContainerPath = path.slice(0, -1)
+            targetContainer = targetContainerPath.length === 0 ? newJson : _.get(newJson, targetContainerPath)
+            // Insert after the target item
+            const key = path[path.length - 1]
+            if (Array.isArray(targetContainer)) {
+               insertIndex = parseInt(key) + 1
+            }
+         } else if (targetContainer === null) {
+            // Treat null as leaf
+            targetContainerPath = path.slice(0, -1)
+            targetContainer = targetContainerPath.length === 0 ? newJson : _.get(newJson, targetContainerPath)
+         }
+
+         const itemsToPaste = Array.isArray(pastedData) ? pastedData : [pastedData]
+
+         // If target is array, push or insert
+         if (Array.isArray(targetContainer)) {
+            if (insertIndex !== -1) {
+               targetContainer.splice(insertIndex, 0, ...itemsToPaste)
+            } else {
+               targetContainer.push(...itemsToPaste)
+            }
+         } else if (typeof targetContainer === 'object') {
+            itemsToPaste.forEach((item, i) => {
+               const newKey = `new_item_${Date.now()}_${i}`
+               targetContainer[newKey] = item
+            })
+         }
+
+         // If this was a cut operation, remove original items
+         if (cutIds.size > 0) {
+            const sortedCutIds = Array.from(cutIds).sort((a, b) => b.length - a.length) // Deepest first
+
+            sortedCutIds.forEach(cutId => {
+               const cutPath = cutId.split('.').slice(1)
+               const cutParentPath = cutPath.slice(0, -1)
+               const cutKey = cutPath[cutPath.length - 1]
+
+               const parent = cutParentPath.length === 0 ? newJson : _.get(newJson, cutParentPath)
+               if (Array.isArray(parent)) {
+                  parent[parseInt(cutKey)] = undefined
+               } else {
+                  delete parent[cutKey]
+               }
+            })
+
+            // Cleanup undefineds in arrays
+            const cleanUndefineds = (obj: any) => {
+               if (Array.isArray(obj)) {
+                  const newArr = obj.filter(x => x !== undefined)
+                  obj.length = 0
+                  obj.push(...newArr)
+                  obj.forEach(cleanUndefineds)
+               } else if (typeof obj === 'object' && obj !== null) {
+                  Object.values(obj).forEach(cleanUndefineds)
+               }
+            }
+            cleanUndefineds(newJson)
+
+            setCutIds(new Set())
+         }
+
+         setJsonData(newJson)
+         setJsonString(JSON.stringify(newJson, null, 2))
+
+      } catch (e) {
+         console.error("Paste failed", e)
+      }
+   }, [selectedIds, lastSelectedId, jsonData, cutIds])
+
+   useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+         if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+
+         if (e.ctrlKey || e.metaKey) {
+            if (e.key === 'c') {
+               e.preventDefault()
+               handleCopy()
+            } else if (e.key === 'x') {
+               e.preventDefault()
+               handleCut()
+            } else if (e.key === 'v') {
+               e.preventDefault()
+               handlePaste()
+            }
+         }
+      }
+
+      window.addEventListener('keydown', handleKeyDown)
+      return () => window.removeEventListener('keydown', handleKeyDown)
+   }, [handleCopy, handleCut, handlePaste])
+
    return (
       <div className="h-screen w-full flex flex-col p-4 gap-4">
          <div className="flex items-center justify-between">
@@ -395,12 +595,17 @@ export default function JsonEditor() {
             </ResizablePanel>
             <ResizableHandle />
             <ResizablePanel defaultSize={60} minSize={20}>
-               <div className="h-full overflow-auto p-2">
+               <div className="h-full overflow-auto p-2" onClick={() => setSelectedIds(new Set())}>
                   <TreeView
                      data={treeData}
                      className="w-full"
+                     initialSelectedItemIds={Array.from(selectedIds)}
+                     cutItemIds={Array.from(cutIds)}
                      renderItem={({ item, isLeaf }) => (
-                        <div className="flex items-center gap-2 flex-1 min-w-0 group/item">
+                        <div
+                           className="flex items-center gap-2 flex-1 min-w-0 group/item"
+                           onClick={(e) => handleNodeClick(e, item)}
+                        >
                            {item.icon && <item.icon className="h-4 w-4 shrink-0 text-muted-foreground" />}
 
                            {item.isKeyEditable ? (
