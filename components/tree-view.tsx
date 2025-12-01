@@ -224,41 +224,48 @@ const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
         return (
             <div ref={ref} role="tree" className={className} {...props}>
                 <ul>
-                    {data.map((item) => (
-                        <li key={item.id}>
-                            {item.children ? (
-                                <TreeNode
-                                    item={item}
-                                    level={level ?? 0}
-                                    selectedItemIds={selectedItemIds}
-                                    expandedItemIds={expandedItemIds}
-                                    handleSelectChange={handleSelectChange}
-                                    defaultNodeIcon={defaultNodeIcon}
-                                    defaultLeafIcon={defaultLeafIcon}
-                                    handleDragStart={handleDragStart}
-                                    handleDrop={handleDrop}
-                                    draggedItem={draggedItem}
-                                    renderItem={renderItem}
-                                    cutItemIds={cutItemIds}
-                                    onNodeClick={onNodeClick}
-                                />
-                            ) : (
-                                <TreeLeaf
-                                    item={item}
-                                    level={level ?? 0}
-                                    selectedItemIds={selectedItemIds}
-                                    handleSelectChange={handleSelectChange}
-                                    defaultLeafIcon={defaultLeafIcon}
-                                    handleDragStart={handleDragStart}
-                                    handleDrop={handleDrop}
-                                    draggedItem={draggedItem}
-                                    renderItem={renderItem}
-                                    cutItemIds={cutItemIds}
-                                    onNodeClick={onNodeClick}
-                                />
-                            )}
-                        </li>
-                    ))}
+                    {data.map((item) => {
+                        const isSelected = selectedItemIds.includes(item.id)
+                        return (
+                            <li
+                                key={item.id}
+                                data-selected={isSelected}
+                                className="peer group/li"
+                            >
+                                {item.children ? (
+                                    <TreeNode
+                                        item={item}
+                                        level={level ?? 0}
+                                        selectedItemIds={selectedItemIds}
+                                        expandedItemIds={expandedItemIds}
+                                        handleSelectChange={handleSelectChange}
+                                        defaultNodeIcon={defaultNodeIcon}
+                                        defaultLeafIcon={defaultLeafIcon}
+                                        handleDragStart={handleDragStart}
+                                        handleDrop={handleDrop}
+                                        draggedItem={draggedItem}
+                                        renderItem={renderItem}
+                                        cutItemIds={cutItemIds}
+                                        onNodeClick={onNodeClick}
+                                    />
+                                ) : (
+                                    <TreeLeaf
+                                        item={item}
+                                        level={level ?? 0}
+                                        selectedItemIds={selectedItemIds}
+                                        handleSelectChange={handleSelectChange}
+                                        defaultLeafIcon={defaultLeafIcon}
+                                        handleDragStart={handleDragStart}
+                                        handleDrop={handleDrop}
+                                        draggedItem={draggedItem}
+                                        renderItem={renderItem}
+                                        cutItemIds={cutItemIds}
+                                        onNodeClick={onNodeClick}
+                                    />
+                                )}
+                            </li>
+                        )
+                    })}
                 </ul>
             </div>
         )
@@ -341,6 +348,10 @@ const TreeNode = ({
                     className={cn(
                         treeVariants(),
                         isSelected && selectedTreeVariants(),
+                        // Remove bottom border/radius if next sibling is selected
+                        "group-[&:has(+_.peer[data-selected=true])]/li:before:rounded-b-none group-[&:has(+_.peer[data-selected=true])]/li:before:border-b-0",
+                        // Remove top border/radius if previous sibling is selected
+                        "group-[.peer[data-selected=true]_+_&]/li:before:rounded-t-none group-[.peer[data-selected=true]_+_&]/li:before:border-t-0",
                         isCut && cutTreeVariants(),
                         isDragOver && dragOverVariants(),
                         item.className,
@@ -485,6 +496,10 @@ const TreeLeaf = React.forwardRef<
                     treeVariants(),
                     className,
                     isSelected && selectedTreeVariants(),
+                    // Remove bottom border/radius if next sibling is selected
+                    "group-[&:has(+_.peer[data-selected=true])]/li:before:rounded-b-none group-[&:has(+_.peer[data-selected=true])]/li:before:border-b-0",
+                    // Remove top border/radius if previous sibling is selected
+                    "group-[.peer[data-selected=true]_+_&]/li:before:rounded-t-none group-[.peer[data-selected=true]_+_&]/li:before:border-t-0",
                     isCut && cutTreeVariants(),
                     isDragOver && dragOverVariants(),
                     item.disabled && 'opacity-50 cursor-not-allowed pointer-events-none',
