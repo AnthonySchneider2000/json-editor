@@ -920,7 +920,7 @@ export default function JsonEditor() {
                         />
                      </div>
                   </ResizablePanel>
-                  <ResizableHandle />
+                  <ResizableHandle withHandle />
                   <ResizablePanel defaultSize={40} minSize={20}>
                      <div className="h-full p-4 bg-muted/10">
                         <Textarea
@@ -944,7 +944,7 @@ export default function JsonEditor() {
                         />
                      </div>
                   </ResizablePanel>
-                  <ResizableHandle />
+                  <ResizableHandle withHandle />
                   <ResizablePanel defaultSize={60} minSize={20}>
                      <div className="h-full overflow-auto p-2" onClick={() => setSelectedIds(new Set())}>
                         <TreeView
