@@ -151,6 +151,25 @@ const TreeView = React.forwardRef<HTMLDivElement, TreeProps>(
             return ids
         }, [data, expandAll, initialSelectedItemIds])
 
+        const [expandedIds, setExpandedIds] = React.useState<string[]>([])
+
+        React.useEffect(() => {
+            setExpandedIds(prev => {
+                const newIds = new Set([...prev, ...expandedItemIds])
+                return Array.from(newIds)
+            })
+        }, [expandedItemIds])
+
+        const handleExpand = React.useCallback((id: string, isOpen: boolean) => {
+            setExpandedIds(prev => {
+                if (isOpen) {
+                    return [...prev, id]
+                } else {
+                    return prev.filter(itemId => itemId !== id)
+                }
+            })
+        }, [])
+
         return (
             <div className={cn('overflow-hidden relative p-2', className)}>
                 <TreeItem
@@ -158,7 +177,8 @@ const TreeView = React.forwardRef<HTMLDivElement, TreeProps>(
                     ref={ref}
                     selectedItemIds={selectedItemIds}
                     handleSelectChange={handleSelectChange}
-                    expandedItemIds={expandedItemIds}
+                    expandedItemIds={expandedIds}
+                    handleExpand={handleExpand}
                     defaultLeafIcon={defaultLeafIcon}
                     defaultNodeIcon={defaultNodeIcon}
                     handleDragStart={handleDragStart}
@@ -193,6 +213,14 @@ type TreeItemProps = TreeProps & {
     level?: number
     isParentSelected?: boolean
     isParentNextSiblingSelected?: boolean
+    handleExpand: (id: string, isOpen: boolean) => void
+}
+
+function findLastVisibleDescendant(item: TreeDataItem, expandedIds: string[]): TreeDataItem {
+    if (expandedIds.includes(item.id) && item.children && item.children.length > 0) {
+        return findLastVisibleDescendant(item.children[item.children.length - 1], expandedIds)
+    }
+    return item
 }
 
 const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
@@ -218,6 +246,7 @@ const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
             onNodeClick,
             isParentSelected,
             isParentNextSiblingSelected,
+            handleExpand,
             ...props
         },
         ref
@@ -230,7 +259,11 @@ const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
                 <ul>
                     {data.map((item, index) => {
                         const isSelected = selectedItemIds.includes(item.id)
-                        const isPrevSiblingSelected = index > 0 && selectedItemIds.includes(data[index - 1].id)
+
+                        const prevItem = index > 0 ? data[index - 1] : null
+                        const effectivePrevItem = prevItem ? findLastVisibleDescendant(prevItem, expandedItemIds) : null
+                        const isPrevSiblingSelected = effectivePrevItem ? selectedItemIds.includes(effectivePrevItem.id) : false
+
                         const isNextSiblingSelected = (index < data.length - 1 && selectedItemIds.includes(data[index + 1].id)) || (index === data.length - 1 && !!isParentNextSiblingSelected)
                         return (
                             <li
@@ -258,6 +291,7 @@ const TreeItem = React.forwardRef<HTMLDivElement, TreeItemProps>(
                                         isParentSelected={isParentSelected}
                                         isPrevSiblingSelected={isPrevSiblingSelected}
                                         isNextSiblingSelected={isNextSiblingSelected}
+                                        handleExpand={handleExpand}
                                     />
                                 ) : (
                                     <TreeLeaf
@@ -306,6 +340,7 @@ const TreeNode = ({
     isParentSelected,
     isPrevSiblingSelected,
     isNextSiblingSelected,
+    handleExpand,
 }: {
     item: TreeDataItem
     handleSelectChange: (item: TreeDataItem | undefined) => void
@@ -324,15 +359,14 @@ const TreeNode = ({
     isParentSelected?: boolean
     isPrevSiblingSelected?: boolean
     isNextSiblingSelected?: boolean
+    handleExpand: (id: string, isOpen: boolean) => void
 }) => {
-    const [value, setValue] = React.useState(
-        expandedItemIds.includes(item.id) ? [item.id] : []
-    )
     const [isDragOver, setIsDragOver] = React.useState(false)
     const hasChildren = !!item.children?.length
     const isSelected = selectedItemIds.includes(item.id)
     const isCut = cutItemIds.includes(item.id)
-    const isOpen = value.includes(item.id)
+    const isOpen = expandedItemIds.includes(item.id)
+    const value = isOpen ? [item.id] : []
 
     const isFirstChildSelected = item.children && item.children.length > 0 && selectedItemIds.includes(item.children[0].id) && isOpen
 
@@ -366,7 +400,7 @@ const TreeNode = ({
         <AccordionPrimitive.Root
             type="multiple"
             value={value}
-            onValueChange={(s) => setValue(s)}
+            onValueChange={(s) => handleExpand(item.id, s.includes(item.id))}
         >
             <AccordionPrimitive.Item value={item.id}>
                 <div
@@ -375,7 +409,7 @@ const TreeNode = ({
                         treeVariants(),
                         isSelected && selectedTreeVariants(),
                         // Remove bottom border/radius if next sibling is selected
-                        isNextSiblingSelected && "before:rounded-b-none before:border-b-0",
+                        (!isOpen && isNextSiblingSelected) && "before:rounded-b-none before:border-b-0",
                         // Remove top border/radius if previous sibling is selected
                         isPrevSiblingSelected && "before:rounded-t-none before:border-t-0",
                         // Remove bottom border/radius if first child is selected
@@ -459,6 +493,7 @@ const TreeNode = ({
                             onNodeClick={onNodeClick}
                             isParentSelected={isSelected}
                             isParentNextSiblingSelected={isNextSiblingSelected}
+                            handleExpand={handleExpand}
                         />
                     </div>
                 </AccordionContent>
