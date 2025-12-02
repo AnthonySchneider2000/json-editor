@@ -437,6 +437,7 @@ const TreeNode = ({
                     <AccordionPrimitive.Header asChild>
                         <AccordionPrimitive.Trigger
                             className="transition-all [&[data-state=open]>svg]:rotate-90 mr-1 focus:outline-none"
+                            onClick={(e) => e.stopPropagation()}
                         >
                             <ChevronRight className="h-4 w-4 shrink-0 transition-transform duration-200 text-accent-foreground/50" />
                         </AccordionPrimitive.Trigger>
