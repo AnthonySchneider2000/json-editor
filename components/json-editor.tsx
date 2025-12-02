@@ -73,7 +73,7 @@ const TYPES = ['string', 'number', 'boolean', 'object', 'array', 'null'] as cons
 type JsonType = typeof TYPES[number]
 
 export default function JsonEditor() {
-   const { theme, setTheme } = useTheme()
+   const { theme, setTheme, resolvedTheme } = useTheme()
    const [jsonString, setJsonString] = useState(JSON.stringify(initialJson, null, 2))
    const [jsonData, setJsonData] = useState<any>(initialJson)
    const [error, setError] = useState<string | null>(null)
@@ -821,7 +821,7 @@ export default function JsonEditor() {
                <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
                   title="Toggle Theme"
                >
                   <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
@@ -952,7 +952,7 @@ export default function JsonEditor() {
                            value={jsonString}
                            onChange={handleEditorChange}
                            beforeMount={handleEditorWillMount}
-                           theme={theme === 'dark' ? 'crimson-dark' : 'crimson-light'}
+                           theme={resolvedTheme === 'dark' ? 'crimson-dark' : 'crimson-light'}
                            options={{
                               minimap: { enabled: false },
                               scrollBeyondLastLine: false,
@@ -975,7 +975,7 @@ export default function JsonEditor() {
                            value={jsonString}
                            onChange={handleEditorChange}
                            beforeMount={handleEditorWillMount}
-                           theme={theme === 'dark' ? 'crimson-dark' : 'crimson-light'}
+                           theme={resolvedTheme === 'dark' ? 'crimson-dark' : 'crimson-light'}
                            options={{
                               minimap: { enabled: false },
                               scrollBeyondLastLine: false,
