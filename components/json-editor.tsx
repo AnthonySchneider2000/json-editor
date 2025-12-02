@@ -935,16 +935,29 @@ export default function JsonEditor() {
                   <DialogTitle>{isAdding ? 'Add New Item' : 'Edit Item'}</DialogTitle>
                </DialogHeader>
                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                     <Label htmlFor="key" className="text-right">Key</Label>
-                     <Input
-                        id="key"
-                        value={editKey}
-                        onChange={(e) => setEditKey(e.target.value)}
-                        className="col-span-3"
-                        disabled={!isAdding && Array.isArray(_.get(jsonData, editingNode?.id.split('.').slice(1, -1).join('.') || '', jsonData))}
-                     />
-                  </div>
+                  {!(isAdding && parentNode?.type === 'array') && (
+                     <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="key" className="text-right">Key</Label>
+                        <Input
+                           id="key"
+                           value={editKey}
+                           onChange={(e) => setEditKey(e.target.value)}
+                           className="col-span-3"
+                           disabled={!isAdding && Array.isArray(_.get(jsonData, editingNode?.id.split('.').slice(1, -1).join('.') || '', jsonData))}
+                        />
+                     </div>
+                  )}
+                  {['string', 'number', 'boolean'].includes(editType) && (
+                     <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="value" className="text-right">Value</Label>
+                        <Input
+                           id="value"
+                           value={editValue}
+                           onChange={(e) => setEditValue(e.target.value)}
+                           className="col-span-3"
+                        />
+                     </div>
+                  )}
                   <div className="grid grid-cols-4 items-center gap-4">
                      <Label htmlFor="type" className="text-right">Type</Label>
                      <select
@@ -958,21 +971,11 @@ export default function JsonEditor() {
                         ))}
                      </select>
                   </div>
-                  {['string', 'number', 'boolean'].includes(editType) && (
-                     <div className="grid grid-cols-4 items-center gap-4">
-                        <Label htmlFor="value" className="text-right">Value</Label>
-                        <Input
-                           id="value"
-                           value={editValue}
-                           onChange={(e) => setEditValue(e.target.value)}
-                           className="col-span-3"
-                        />
-                     </div>
-                  )}
                   {validationError && (
                      <div className="text-destructive text-sm text-center">{validationError}</div>
                   )}
                </div>
+
                <DialogFooter>
                   <Button onClick={saveEdit}>Save changes</Button>
                </DialogFooter>
