@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { TreeView, TreeDataItem } from '@/components/tree-view'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable'
-import { Textarea } from '@/components/ui/textarea'
+import Editor from '@monaco-editor/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -149,8 +149,8 @@ export default function JsonEditor() {
       }
    }, [])
 
-   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      const str = e.target.value
+   const handleEditorChange = (value: string | undefined) => {
+      const str = value || ''
       setJsonString(str)
       parseJson(str)
    }
@@ -733,7 +733,11 @@ export default function JsonEditor() {
 
    useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {
-         if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+         if (
+            e.target instanceof HTMLInputElement ||
+            e.target instanceof HTMLTextAreaElement ||
+            (e.target instanceof HTMLElement && e.target.closest('.monaco-editor'))
+         ) return
 
          if (e.key === 'Delete') {
             e.preventDefault()
@@ -922,12 +926,21 @@ export default function JsonEditor() {
                   </ResizablePanel>
                   <ResizableHandle withHandle />
                   <ResizablePanel defaultSize={40} minSize={20}>
-                     <div className="h-full p-2 bg-muted/10">
-                        <Textarea
+                     <div className="h-full bg-muted/10">
+                        <Editor
+                           height="100%"
+                           defaultLanguage="json"
                            value={jsonString}
-                           onChange={handleTextChange}
-                           className="h-full font-mono text-sm resize-none border-0 bg-transparent focus-visible:ring-0"
-                           spellCheck={false}
+                           onChange={handleEditorChange}
+                           theme={theme === 'dark' ? 'vs-dark' : 'light'}
+                           options={{
+                              minimap: { enabled: false },
+                              scrollBeyondLastLine: false,
+                              fontSize: 14,
+                              fontFamily: 'monospace',
+                              wordWrap: 'on',
+                              automaticLayout: true,
+                           }}
                         />
                      </div>
                   </ResizablePanel>
@@ -935,12 +948,21 @@ export default function JsonEditor() {
             ) : (
                <>
                   <ResizablePanel defaultSize={40} minSize={20}>
-                     <div className="h-full p-2 md:p-4 bg-muted/10">
-                        <Textarea
+                     <div className="h-full bg-muted/10">
+                        <Editor
+                           height="100%"
+                           defaultLanguage="json"
                            value={jsonString}
-                           onChange={handleTextChange}
-                           className="h-full font-mono text-sm resize-none border-0 bg-transparent focus-visible:ring-0"
-                           spellCheck={false}
+                           onChange={handleEditorChange}
+                           theme={theme === 'dark' ? 'vs-dark' : 'light'}
+                           options={{
+                              minimap: { enabled: false },
+                              scrollBeyondLastLine: false,
+                              fontSize: 14,
+                              fontFamily: 'monospace',
+                              wordWrap: 'on',
+                              automaticLayout: true,
+                           }}
                         />
                      </div>
                   </ResizablePanel>
