@@ -149,6 +149,25 @@ export default function JsonEditor() {
       }
    }, [])
 
+   const handleEditorWillMount = (monaco: any) => {
+      monaco.editor.defineTheme('crimson-dark', {
+         base: 'vs-dark',
+         inherit: true,
+         rules: [],
+         colors: {
+            'editor.background': '#0D0D0D',
+         }
+      })
+      monaco.editor.defineTheme('crimson-light', {
+         base: 'vs',
+         inherit: true,
+         rules: [],
+         colors: {
+            'editor.background': '#ffffff',
+         }
+      })
+   }
+
    const handleEditorChange = (value: string | undefined) => {
       const str = value || ''
       setJsonString(str)
@@ -932,7 +951,8 @@ export default function JsonEditor() {
                            defaultLanguage="json"
                            value={jsonString}
                            onChange={handleEditorChange}
-                           theme={theme === 'dark' ? 'vs-dark' : 'light'}
+                           beforeMount={handleEditorWillMount}
+                           theme={theme === 'dark' ? 'crimson-dark' : 'crimson-light'}
                            options={{
                               minimap: { enabled: false },
                               scrollBeyondLastLine: false,
@@ -954,7 +974,8 @@ export default function JsonEditor() {
                            defaultLanguage="json"
                            value={jsonString}
                            onChange={handleEditorChange}
-                           theme={theme === 'dark' ? 'vs-dark' : 'light'}
+                           beforeMount={handleEditorWillMount}
+                           theme={theme === 'dark' ? 'crimson-dark' : 'crimson-light'}
                            options={{
                               minimap: { enabled: false },
                               scrollBeyondLastLine: false,
