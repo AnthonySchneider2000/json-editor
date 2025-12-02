@@ -769,7 +769,7 @@ export default function JsonEditor() {
    const isMobile = useMediaQuery("(max-width: 768px)")
 
    return (
-      <div className="h-screen w-full flex flex-col gap-4 p-4">
+      <div className="h-screen w-full flex flex-col gap-2 md:gap-4 p-2 md:p-4">
          <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold">JSON Editor</h1>
             <div className="flex items-center gap-2">
@@ -892,7 +892,7 @@ export default function JsonEditor() {
                                           </PopoverContent>
                                        </Popover>
 
-                                       <div className="opacity-0 group-hover/item:opacity-100 transition-opacity flex items-center">
+                                       <div className="md:opacity-0 group-hover/item:opacity-100 transition-opacity flex items-center">
                                           {item.actions}
                                        </div>
                                     </div>
@@ -922,7 +922,7 @@ export default function JsonEditor() {
                   </ResizablePanel>
                   <ResizableHandle withHandle />
                   <ResizablePanel defaultSize={40} minSize={20}>
-                     <div className="h-full p-4 bg-muted/10">
+                     <div className="h-full p-2 bg-muted/10">
                         <Textarea
                            value={jsonString}
                            onChange={handleTextChange}
@@ -935,7 +935,7 @@ export default function JsonEditor() {
             ) : (
                <>
                   <ResizablePanel defaultSize={40} minSize={20}>
-                     <div className="h-full p-4 bg-muted/10">
+                     <div className="h-full p-2 md:p-4 bg-muted/10">
                         <Textarea
                            value={jsonString}
                            onChange={handleTextChange}
@@ -946,7 +946,7 @@ export default function JsonEditor() {
                   </ResizablePanel>
                   <ResizableHandle withHandle />
                   <ResizablePanel defaultSize={60} minSize={20}>
-                     <div className="h-full overflow-auto p-2" onClick={() => setSelectedIds(new Set())}>
+                     <div className="h-full overflow-auto p-1 md:p-2" onClick={() => setSelectedIds(new Set())}>
                         <TreeView
                            data={treeData}
                            className="w-full"
