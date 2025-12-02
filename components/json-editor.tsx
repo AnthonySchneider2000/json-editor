@@ -59,13 +59,12 @@ import { z } from 'zod'
 import { useMediaQuery } from '@/hooks/use-media-query'
 
 const initialJson = {
-   "name": "Crimson Voyager",
-   "version": "1.0.0",
-   "features": ["json-editor", "tree-view", "shadcn-ui"],
+   "name": "EditJson",
+   "version": 1,
+   "features": ["json-editor", "tree-view"],
    "settings": {
       "theme": "dark",
-      "notifications": true,
-      "retryCount": 3
+      "language": "en",
    }
 }
 
