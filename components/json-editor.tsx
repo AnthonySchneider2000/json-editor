@@ -56,6 +56,7 @@ import {
 } from "@/components/ui/context-menu"
 import { useTheme } from "next-themes"
 import { z } from 'zod'
+import { useMediaQuery } from '@/hooks/use-media-query'
 
 const initialJson = {
    "name": "Crimson Voyager",
@@ -765,6 +766,8 @@ export default function JsonEditor() {
       return () => window.removeEventListener('keydown', handleKeyDown)
    }, [handleCopy, handleCut, handlePaste, handleDelete, handleUndo, handleRedo])
 
+   const isMobile = useMediaQuery("(max-width: 768px)")
+
    return (
       <div className="h-screen w-full flex flex-col gap-4 p-4">
          <div className="flex items-center justify-between">
@@ -805,127 +808,254 @@ export default function JsonEditor() {
             </div>
          </div>
 
-         <ResizablePanelGroup direction="horizontal" className="flex-1 rounded-lg border">
-            <ResizablePanel defaultSize={40} minSize={20}>
-               <div className="h-full p-4 bg-muted/10">
-                  <Textarea
-                     value={jsonString}
-                     onChange={handleTextChange}
-                     className="h-full font-mono text-sm resize-none border-0 bg-transparent focus-visible:ring-0"
-                     spellCheck={false}
-                  />
-               </div>
-            </ResizablePanel>
-            <ResizableHandle />
-            <ResizablePanel defaultSize={60} minSize={20}>
-               <div className="h-full overflow-auto p-2" onClick={() => setSelectedIds(new Set())}>
-                  <TreeView
-                     data={treeData}
-                     className="w-full"
-                     initialSelectedItemIds={Array.from(selectedIds)}
-                     cutItemIds={Array.from(cutIds)}
-                     onNodeClick={(item, e) => handleNodeClick(e, item)}
-                     onDocumentDrag={handleReorder}
-                     renderItem={({ item, isLeaf, isSelected }) => (
-                        <ContextMenu>
-                           <ContextMenuTrigger asChild>
-                              <div
-                                 className="flex items-center gap-2 flex-1 min-w-0 group/item"
-                                 onContextMenu={(e) => {
-                                    if (!selectedIds.has(item.id)) {
-                                       handleNodeClick(e, item)
-                                    }
-                                 }}
-                              >
-                                 {item.icon && <item.icon className="h-4 w-4 shrink-0 text-muted-foreground" />}
+         <ResizablePanelGroup direction={isMobile ? "vertical" : "horizontal"} className="flex-1 rounded-lg border">
+            {isMobile ? (
+               <>
+                  <ResizablePanel defaultSize={60} minSize={20}>
+                     <div className="h-full overflow-auto p-2" onClick={() => setSelectedIds(new Set())}>
+                        <TreeView
+                           data={treeData}
+                           className="w-full"
+                           initialSelectedItemIds={Array.from(selectedIds)}
+                           cutItemIds={Array.from(cutIds)}
+                           onNodeClick={(item, e) => handleNodeClick(e, item)}
+                           onDocumentDrag={handleReorder}
+                           renderItem={({ item, isLeaf, isSelected }) => (
+                              <ContextMenu>
+                                 <ContextMenuTrigger asChild>
+                                    <div
+                                       className="flex items-center gap-2 flex-1 min-w-0 group/item"
+                                       onContextMenu={(e) => {
+                                          if (!selectedIds.has(item.id)) {
+                                             handleNodeClick(e, item)
+                                          }
+                                       }}
+                                    >
+                                       {item.icon && <item.icon className="h-4 w-4 shrink-0 text-muted-foreground" />}
 
-                                 {item.isKeyEditable ? (
-                                    <Input
-                                       className="h-6 px-1 py-0 w-auto min-w-[50px] max-w-[150px] border-none font-medium transition-colors hover:bg-muted/50 focus:bg-background"
-                                       defaultValue={item.name}
-                                       onBlur={(e) => handleKeyUpdate(item, e.target.value)}
-                                       onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
-                                       onClick={(e) => e.stopPropagation()}
-                                    />
-                                 ) : (
-                                    <span className="font-medium text-foreground">{item.name}</span>
-                                 )}
-                                 {isLeaf && (
-                                    <>
-                                       <span className="text-muted-foreground">:</span>
-                                       <Input
-                                          className="h-6 px-1 py-0 ml-1 min-w-[50px] w-auto border-none transition-colors hover:bg-muted/50 focus:bg-background text-muted-foreground"
-                                          defaultValue={String(item.value)}
-                                          onBlur={(e) => handleValueUpdate(item, e.target.value)}
-                                          onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
-                                          onClick={(e) => e.stopPropagation()}
-                                       />
-                                    </>
-                                 )}
-                                 <Popover>
-                                    <PopoverTrigger asChild>
-                                       <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-5 px-1.5 text-[10px] ml-2 transition-colors text-muted-foreground/50 hover:text-foreground"
-                                          onClick={(e) => e.stopPropagation()}
-                                       >
-                                          {item.type}
-                                       </Button>
-                                    </PopoverTrigger>
-
-                                    <PopoverContent className="w-32 p-1" align="start">
-                                       <div className="grid gap-1">
-                                          {TYPES.map((t) => (
+                                       {item.isKeyEditable ? (
+                                          <Input
+                                             className="h-6 px-1 py-0 w-auto min-w-[50px] max-w-[150px] border-none font-medium transition-colors hover:bg-muted/50 focus:bg-background"
+                                             defaultValue={item.name}
+                                             onBlur={(e) => handleKeyUpdate(item, e.target.value)}
+                                             onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                                             onClick={(e) => e.stopPropagation()}
+                                          />
+                                       ) : (
+                                          <span className="font-medium text-foreground">{item.name}</span>
+                                       )}
+                                       {isLeaf && (
+                                          <>
+                                             <span className="text-muted-foreground">:</span>
+                                             <Input
+                                                className="h-6 px-1 py-0 ml-1 min-w-[50px] w-auto border-none transition-colors hover:bg-muted/50 focus:bg-background text-muted-foreground"
+                                                defaultValue={String(item.value)}
+                                                onBlur={(e) => handleValueUpdate(item, e.target.value)}
+                                                onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                                                onClick={(e) => e.stopPropagation()}
+                                             />
+                                          </>
+                                       )}
+                                       <Popover>
+                                          <PopoverTrigger asChild>
                                              <Button
-                                                key={t}
                                                 variant="ghost"
                                                 size="sm"
-                                                className={cn(
-                                                   "justify-start h-7 text-xs",
-                                                   item.type === t && "bg-accent"
-                                                )}
-                                                onClick={(e) => {
-                                                   e.stopPropagation()
-                                                   changeType(item, t)
-                                                }}
+                                                className="h-5 px-1.5 text-[10px] ml-2 transition-colors text-muted-foreground/50 hover:text-foreground"
+                                                onClick={(e) => e.stopPropagation()}
                                              >
-                                                {t}
-                                                {item.type === t && <Check className="ml-auto h-3 w-3" />}
+                                                {item.type}
                                              </Button>
-                                          ))}
-                                       </div>
-                                    </PopoverContent>
-                                 </Popover>
+                                          </PopoverTrigger>
 
-                                 <div className="opacity-0 group-hover/item:opacity-100 transition-opacity flex items-center">
-                                    {item.actions}
-                                 </div>
-                              </div>
-                           </ContextMenuTrigger>
-                           <ContextMenuContent>
-                              <ContextMenuItem onClick={handleCopy}>
-                                 Copy
-                                 <ContextMenuShortcut>Ctrl+C</ContextMenuShortcut>
-                              </ContextMenuItem>
-                              <ContextMenuItem onClick={handleCut}>
-                                 Cut
-                                 <ContextMenuShortcut>Ctrl+X</ContextMenuShortcut>
-                              </ContextMenuItem>
-                              <ContextMenuItem onClick={handlePaste}>
-                                 Paste
-                                 <ContextMenuShortcut>Ctrl+V</ContextMenuShortcut>
-                              </ContextMenuItem>
-                              <ContextMenuItem onClick={() => handleDeleteRequest(item)} className="text-destructive focus:text-destructive">
-                                 Delete
-                                 <ContextMenuShortcut>Del</ContextMenuShortcut>
-                              </ContextMenuItem>
-                           </ContextMenuContent>
-                        </ContextMenu>
-                     )}
-                  />
-               </div>
-            </ResizablePanel>
+                                          <PopoverContent className="w-32 p-1" align="start">
+                                             <div className="grid gap-1">
+                                                {TYPES.map((t) => (
+                                                   <Button
+                                                      key={t}
+                                                      variant="ghost"
+                                                      size="sm"
+                                                      className={cn(
+                                                         "justify-start h-7 text-xs",
+                                                         item.type === t && "bg-accent"
+                                                      )}
+                                                      onClick={(e) => {
+                                                         e.stopPropagation()
+                                                         changeType(item, t)
+                                                      }}
+                                                   >
+                                                      {t}
+                                                      {item.type === t && <Check className="ml-auto h-3 w-3" />}
+                                                   </Button>
+                                                ))}
+                                             </div>
+                                          </PopoverContent>
+                                       </Popover>
+
+                                       <div className="opacity-0 group-hover/item:opacity-100 transition-opacity flex items-center">
+                                          {item.actions}
+                                       </div>
+                                    </div>
+                                 </ContextMenuTrigger>
+                                 <ContextMenuContent>
+                                    <ContextMenuItem onClick={handleCopy}>
+                                       Copy
+                                       <ContextMenuShortcut>Ctrl+C</ContextMenuShortcut>
+                                    </ContextMenuItem>
+                                    <ContextMenuItem onClick={handleCut}>
+                                       Cut
+                                       <ContextMenuShortcut>Ctrl+X</ContextMenuShortcut>
+                                    </ContextMenuItem>
+                                    <ContextMenuItem onClick={handlePaste}>
+                                       Paste
+                                       <ContextMenuShortcut>Ctrl+V</ContextMenuShortcut>
+                                    </ContextMenuItem>
+                                    <ContextMenuItem onClick={() => handleDeleteRequest(item)} className="text-destructive focus:text-destructive">
+                                       Delete
+                                       <ContextMenuShortcut>Del</ContextMenuShortcut>
+                                    </ContextMenuItem>
+                                 </ContextMenuContent>
+                              </ContextMenu>
+                           )}
+                        />
+                     </div>
+                  </ResizablePanel>
+                  <ResizableHandle />
+                  <ResizablePanel defaultSize={40} minSize={20}>
+                     <div className="h-full p-4 bg-muted/10">
+                        <Textarea
+                           value={jsonString}
+                           onChange={handleTextChange}
+                           className="h-full font-mono text-sm resize-none border-0 bg-transparent focus-visible:ring-0"
+                           spellCheck={false}
+                        />
+                     </div>
+                  </ResizablePanel>
+               </>
+            ) : (
+               <>
+                  <ResizablePanel defaultSize={40} minSize={20}>
+                     <div className="h-full p-4 bg-muted/10">
+                        <Textarea
+                           value={jsonString}
+                           onChange={handleTextChange}
+                           className="h-full font-mono text-sm resize-none border-0 bg-transparent focus-visible:ring-0"
+                           spellCheck={false}
+                        />
+                     </div>
+                  </ResizablePanel>
+                  <ResizableHandle />
+                  <ResizablePanel defaultSize={60} minSize={20}>
+                     <div className="h-full overflow-auto p-2" onClick={() => setSelectedIds(new Set())}>
+                        <TreeView
+                           data={treeData}
+                           className="w-full"
+                           initialSelectedItemIds={Array.from(selectedIds)}
+                           cutItemIds={Array.from(cutIds)}
+                           onNodeClick={(item, e) => handleNodeClick(e, item)}
+                           onDocumentDrag={handleReorder}
+                           renderItem={({ item, isLeaf, isSelected }) => (
+                              <ContextMenu>
+                                 <ContextMenuTrigger asChild>
+                                    <div
+                                       className="flex items-center gap-2 flex-1 min-w-0 group/item"
+                                       onContextMenu={(e) => {
+                                          if (!selectedIds.has(item.id)) {
+                                             handleNodeClick(e, item)
+                                          }
+                                       }}
+                                    >
+                                       {item.icon && <item.icon className="h-4 w-4 shrink-0 text-muted-foreground" />}
+
+                                       {item.isKeyEditable ? (
+                                          <Input
+                                             className="h-6 px-1 py-0 w-auto min-w-[50px] max-w-[150px] border-none font-medium transition-colors hover:bg-muted/50 focus:bg-background"
+                                             defaultValue={item.name}
+                                             onBlur={(e) => handleKeyUpdate(item, e.target.value)}
+                                             onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                                             onClick={(e) => e.stopPropagation()}
+                                          />
+                                       ) : (
+                                          <span className="font-medium text-foreground">{item.name}</span>
+                                       )}
+                                       {isLeaf && (
+                                          <>
+                                             <span className="text-muted-foreground">:</span>
+                                             <Input
+                                                className="h-6 px-1 py-0 ml-1 min-w-[50px] w-auto border-none transition-colors hover:bg-muted/50 focus:bg-background text-muted-foreground"
+                                                defaultValue={String(item.value)}
+                                                onBlur={(e) => handleValueUpdate(item, e.target.value)}
+                                                onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+                                                onClick={(e) => e.stopPropagation()}
+                                             />
+                                          </>
+                                       )}
+                                       <Popover>
+                                          <PopoverTrigger asChild>
+                                             <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-5 px-1.5 text-[10px] ml-2 transition-colors text-muted-foreground/50 hover:text-foreground"
+                                                onClick={(e) => e.stopPropagation()}
+                                             >
+                                                {item.type}
+                                             </Button>
+                                          </PopoverTrigger>
+
+                                          <PopoverContent className="w-32 p-1" align="start">
+                                             <div className="grid gap-1">
+                                                {TYPES.map((t) => (
+                                                   <Button
+                                                      key={t}
+                                                      variant="ghost"
+                                                      size="sm"
+                                                      className={cn(
+                                                         "justify-start h-7 text-xs",
+                                                         item.type === t && "bg-accent"
+                                                      )}
+                                                      onClick={(e) => {
+                                                         e.stopPropagation()
+                                                         changeType(item, t)
+                                                      }}
+                                                   >
+                                                      {t}
+                                                      {item.type === t && <Check className="ml-auto h-3 w-3" />}
+                                                   </Button>
+                                                ))}
+                                             </div>
+                                          </PopoverContent>
+                                       </Popover>
+
+                                       <div className="opacity-0 group-hover/item:opacity-100 transition-opacity flex items-center">
+                                          {item.actions}
+                                       </div>
+                                    </div>
+                                 </ContextMenuTrigger>
+                                 <ContextMenuContent>
+                                    <ContextMenuItem onClick={handleCopy}>
+                                       Copy
+                                       <ContextMenuShortcut>Ctrl+C</ContextMenuShortcut>
+                                    </ContextMenuItem>
+                                    <ContextMenuItem onClick={handleCut}>
+                                       Cut
+                                       <ContextMenuShortcut>Ctrl+X</ContextMenuShortcut>
+                                    </ContextMenuItem>
+                                    <ContextMenuItem onClick={handlePaste}>
+                                       Paste
+                                       <ContextMenuShortcut>Ctrl+V</ContextMenuShortcut>
+                                    </ContextMenuItem>
+                                    <ContextMenuItem onClick={() => handleDeleteRequest(item)} className="text-destructive focus:text-destructive">
+                                       Delete
+                                       <ContextMenuShortcut>Del</ContextMenuShortcut>
+                                    </ContextMenuItem>
+                                 </ContextMenuContent>
+                              </ContextMenu>
+                           )}
+                        />
+                     </div>
+                  </ResizablePanel>
+               </>
+            )}
          </ResizablePanelGroup>
 
          {/* Edit/Add Dialog */}
